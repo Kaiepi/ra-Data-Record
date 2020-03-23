@@ -58,6 +58,8 @@ DESCRIPTION
 
 For documentation on how this library can be used, check the [wiki](https://github.com/Kaiepi/p6-Data-Record/wiki/).
 
+**Requires a compiler release of v2020.03 or later.**
+
 AUTHOR
 ======
 
