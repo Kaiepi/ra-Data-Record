@@ -1,7 +1,6 @@
 use v6.e.PREVIEW;
 use Data::Record::Instance;
 use Data::Record::Exceptions;
-use Data::Record::Operators;
 use MetamodelX::RecordHOW;
 use MetamodelX::RecordTemplateHOW;
 unit role Data::Record::List does Data::Record::Instance[List] does Iterable does Positional;
