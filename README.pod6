@@ -1,5 +1,7 @@
 =begin pod
 
+[![Build Status](https://travis-ci.com/Kaiepi/p6-Data-Record.svg?branch=master)](https://travis-ci.com/Kaiepi/p6-Data-Record)
+
 =head1 NAME
 
 Data::Record - Record types!

@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/Kaiepi/p6-Data-Record.svg?branch=master)](https://travis-ci.com/Kaiepi/p6-Data-Record)
+
 NAME
 ====
 
