@@ -104,7 +104,7 @@ method accepts_type(::?CLASS:D: Mu $checkee is raw, Mu $checker is raw --> int) 
     my Mu $checker-d := $checker<>;
     # Are the LHS and RHS identical?
     return 1 if $checker-d =:= $checkee-d;
-    # Is the RHS an instantiation of the LHS?
+    # Is the RHS a parameterization of the LHS?
     return 1 if Metamodel::Primitives.is_type($checker-d.HOW, MetamodelX::RecordHOW)
              && $checker-d.^template =:= $checkee-d;
     # Fail the typecheck.
