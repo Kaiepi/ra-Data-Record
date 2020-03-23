@@ -8,9 +8,6 @@ has         %!parameters is required;
 
 has Metamodel::Archetypes:D $!archetypes is required;
 
-has Mu     $!pun;
-has Bool:D $!made_pun = False;
-
 submethod BUILD(::?CLASS:D: Mu :$delegate! is raw, Block:D :$body_block! is raw, :%parameters! --> Nil) {
     $!delegate   := $delegate.^parameterize: |%parameters;
     $!body_block := $body_block;
