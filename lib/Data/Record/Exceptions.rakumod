@@ -63,3 +63,11 @@ my class X::Data::Record::Merge is Exception does X::Data::Record {
         "It does not make sense to merge two $!type.^name() types"
     }
 }
+
+my class X::Data::Record::Composed is Exception does X::Data::Record {
+    has Mu    $.type      is required is built(:bind);
+    has Str:D $.operation is required;
+    method message(::?CLASS:D: --> Str:D) {
+        "Cannot $!operation a record of type $!type.^name() after it has been composed"
+    }
+}

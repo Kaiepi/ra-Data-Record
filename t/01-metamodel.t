@@ -1,6 +1,7 @@
 use v6.e.PREVIEW;
-use MetamodelX::RecordTemplateHOW;
+use Data::Record::Exceptions;
 use MetamodelX::RecordHOW;
+use MetamodelX::RecordTemplateHOW;
 use Test;
 
 plan 2;
@@ -27,18 +28,22 @@ subtest 'MetamodelX::RecordHOW', {
     lives-ok {
         Record.HOW.compose: Record
     }, 'can compose record types';
-    dies-ok {
+    throws-like {
         Record.HOW.set_template: Record, Mu
-    }, 'cannot set record templates after composition';
-    dies-ok {
+    }, X::Data::Record::Composed,
+      'cannot set record templates after composition';
+    throws-like {
         Record.HOW.set_delegate: Record, role { }
-    }, 'cannot set record delegates after composition';
-    dies-ok {
+    }, X::Data::Record::Composed,
+      'cannot set record delegates after composition';
+    throws-like {
         Record.HOW.set_fields: Record
-    }, 'cannot set record fields after composition';
-    dies-ok {
+    }, X::Data::Record::Composed,
+      'cannot set record fields after composition';
+    throws-like {
         Record.HOW.set_parameters: Record
-    }, 'cannot set record parameters after composition';
+    }, X::Data::Record::Composed,
+      'cannot set record parameters after composition';
 };
 
 subtest 'MetamodelX::RecordTemplateHOW', {
