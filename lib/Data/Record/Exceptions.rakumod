@@ -19,7 +19,7 @@ my class X::Data::Record::Missing is Exception does X::Data::Record::Arity {
 
 my class X::Data::Record::Extraneous is Exception does X::Data::Record::Arity {
     method message(::?CLASS:D: --> Str:D) {
-        "Forbidden extraneous $.what '$!key.gist()' found during $!operation for record of type $!type.^name()"
+        "Forbidden extraneous $!what '$!key.gist()' found during $!operation for record of type $!type.^name()"
     }
 }
 
