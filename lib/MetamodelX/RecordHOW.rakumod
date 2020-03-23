@@ -7,7 +7,7 @@ has Mu $!delegate;
 has    @!fields;
 has    %!parameters;
 
-method new_type(::?CLASS:_: Str:_ :$name, |args) {
+method new_type(::?CLASS:_: Str:_ :$name, |args --> Mu) {
     our Str:D constant ANON_NAME = '<anon record>';
     callwith name => $name // ANON_NAME, |args
 }
