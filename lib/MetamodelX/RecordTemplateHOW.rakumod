@@ -53,11 +53,11 @@ method !do_parameterization(Mu $obj is raw, (@pos, %named) --> Mu) {
                  ']';
 
     my Mu $record := MetamodelX::RecordHOW.new_type: :$name;
-    $record.^set_template:   $obj;
-    $record.^set_delegate:   $!delegate;
-    $record.^set_fields:     $fields;
+    $record.^set_template: $obj;
+    $record.^set_delegate: $!delegate;
+    $record.^set_fields: $fields;
     $record.^set_parameters: |%!parameters;
-    $record.^add_role:       $!delegate;
+    $record.^add_role: $!delegate;
     $record.^compose
 }
 
