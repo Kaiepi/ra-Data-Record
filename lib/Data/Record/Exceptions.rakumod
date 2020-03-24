@@ -2,14 +2,14 @@ use v6.d;
 
 my role X::Data::Record is export { }
 
-my class X::Data::Record::TypeCheck is X::TypeCheck does X::Data::Record { }
-
 my role X::Data::Record::Arity does X::Data::Record {
     has Str:D $.operation is required;
     has Mu    $.type      is required is built(:bind);
     has Str:D $.what      is required;
     has Mu    $.key       is required is built(:bind);
 }
+
+my class X::Data::Record::TypeCheck is X::TypeCheck does X::Data::Record { }
 
 my class X::Data::Record::Missing is Exception does X::Data::Record::Arity {
     method message(::?CLASS:D: --> Str:D) {

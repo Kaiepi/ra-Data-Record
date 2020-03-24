@@ -1,5 +1,6 @@
 use v6.d;
 use Data::Record::Operators;
+use Data::Record::Exceptions;
 use Data::Record::Instance;
 use Data::Record::Tuple;
 use Data::Record::List;
@@ -15,3 +16,9 @@ constant Instance = Data::Record::Instance;
 constant Tuple    = Data::Record::Tuple;
 constant List     = Data::Record::List;
 constant Map      = Data::Record::Map;
+
+my package EXPORT::DEFAULT {
+    package X::Data {
+        constant Record = X::Data::Record;
+    }
+}
