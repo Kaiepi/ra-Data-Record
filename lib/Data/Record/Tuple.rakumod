@@ -459,9 +459,6 @@ multi sub circumfix:«<@ @>»(Block:D $block is raw, Str:_ :$name --> Mu) is exp
     MetamodelX::RecordTemplateHOW.new_type:
         Data::Record::Tuple, $block, :$name
 }
-multi sub circumfix:«<@ @>»(%not-a-block-wtf, Str:_ :$name --> Mu) is export {
-    die X::Data::Record::Block.new: type => Data::Record::Tuple
-}
 
 multi sub infix:«(<<)»(List:D $lhs is raw, Data::Record::Tuple:U $rhs is raw --> Data::Record::Tuple:D) is export {
     $rhs.new: $lhs, :consume

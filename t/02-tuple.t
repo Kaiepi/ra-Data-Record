@@ -7,17 +7,13 @@ use Test;
 plan 4;
 
 subtest 'basic', {
-    plan 44;
+    plan 43;
 
     my Mu    \IntTuple = Mu;
     my Str:D $name     = 'IntTuple';
     lives-ok {
         IntTuple := <@ Int:D @> :$name;
     }, 'can create tuple record types';
-    throws-like {
-        <@{ foo => 'bar' }@>
-    }, X::Data::Record::Block,
-      'cannot create tuple record types using a hash';
 
     is IntTuple.^name, $name,
       'names get passed around when creating tuple record types OK';

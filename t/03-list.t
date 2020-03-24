@@ -7,17 +7,13 @@ use Test;
 plan 4;
 
 subtest 'basic', {
-    plan 36;
+    plan 35;
 
     my Mu    \IntList = Mu;
     my Str:D $name    = 'IntList';
     lives-ok {
         IntList := [@ Int:D @] :$name;
     }, 'can create record list types';
-    throws-like {
-        [@{ foo => Int:D }@]
-    }, X::Data::Record::Block,
-      'cannot create record list types with hashes';
 
     is IntList.^name, $name,
       'names get passed around when creating record list types OK';
