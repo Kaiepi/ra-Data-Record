@@ -139,9 +139,8 @@ my class ConsumedTupleIterator does TupleIterator {
                         got       => $value;
                 }
             } elsif $value ~~ $field.for {
-                my Data::Record::Instance:D $result := $field.new: $value, :consume;
                 CATCH { default { return self.pull-one } }
-                $result
+                $field.new: $value, :consume
             } else {
                 self.pull-one
             }
@@ -254,9 +253,8 @@ my class CoercedTupleIterator does TupleIterator {
                         got       => $value;
                 }
             } elsif $value ~~ $field.for {
-                my Data::Record::Instance:D $result := $field.new: $value, :coerce;
                 CATCH { default { return self.pull-one } }
-                $result
+                $field.new: $value, :coerce
             } else {
                 self.pull-one
             }
