@@ -32,18 +32,16 @@ multi method new(::?CLASS:_: List:D $original is raw, Bool:D :$coerce! where ?*)
 }
 
 my role TupleIterator does Iterator {
-    has Mu         $!type        is required;
-    has Iterator:D $!fields      is required;
-    has Int:D      $!field-count is required;
-    has Iterator:D $!values      is required;
-    has Int:D      $!idx         = 0;
-    has Bool:D     $!done        = False;
+    has Mu         $!type   is required;
+    has Iterator:D $!fields is required;
+    has Iterator:D $!values is required;
+    has Int:D      $!idx    = 0;
+    has Bool:D     $!done   = False;
 
     submethod BUILD(::?CLASS:D: Mu :$type is raw, List:D :$fields is raw, List:D :$record is raw --> Nil) {
-        $!type        := $type;
-        $!fields      := $fields.iterator;
-        $!field-count  = $fields.elems;
-        $!values      := $record.iterator;
+        $!type   := $type;
+        $!fields := $fields.iterator;
+        $!values := $record.iterator;
     }
 
     method new(::?CLASS:_: Mu $type is raw, List:D $fields is raw, List:D $record is raw) {
