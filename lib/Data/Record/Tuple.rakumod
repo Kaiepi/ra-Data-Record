@@ -68,13 +68,13 @@ my class WrappedTupleIterator does TupleIterator {
                 operation => 'tuple reification',
                 type      => $!type,
                 what      => 'index',
-                key       => $!idx;
+                key       => $!idx
         } elsif $value =:= IterationEnd {
             die X::Data::Record::Missing.new:
                 operation => 'tuple reification',
                 type      => $!type,
                 what      => 'index',
-                key       => $!idx;
+                key       => $!idx
         } elsif $field ~~ Data::Record::Instance {
             if $value ~~ Data::Record::Instance {
                 if $value.DEFINITE {
@@ -85,7 +85,7 @@ my class WrappedTupleIterator does TupleIterator {
                     die X::Data::Record::TypeCheck.new:
                         operation => 'tuple reification',
                         expected  => $field,
-                        got       => $value;
+                        got       => $value
                 }
             } elsif $value ~~ $field.for {
                 $field.new: $value
@@ -125,7 +125,7 @@ my class ConsumedTupleIterator does TupleIterator {
                 operation => 'tuple reification',
                 type      => $!type,
                 what      => 'index',
-                key       => $!idx;
+                key       => $!idx
         } elsif $field ~~ Data::Record::Instance {
             if $value ~~ Data::Record::Instance {
                 if $value.DEFINITE {
@@ -136,7 +136,7 @@ my class ConsumedTupleIterator does TupleIterator {
                     die X::Data::Record::TypeCheck.new:
                         operation => 'tuple reification',
                         expected  => $field,
-                        got       => $value;
+                        got       => $value
                 }
             } elsif $value ~~ $field.for {
                 CATCH { default { return self.pull-one } }
@@ -195,7 +195,7 @@ my class SubsumedTupleIterator does TupleIterator {
                     die X::Data::Record::TypeCheck.new:
                         operation => 'tuple reification',
                         expected  => $field,
-                        got       => $value;
+                        got       => $value
                 }
             } elsif $value ~~ $field.for {
                 $field.new: $value, :subsume
@@ -211,7 +211,7 @@ my class SubsumedTupleIterator does TupleIterator {
             die X::Data::Record::TypeCheck.new:
                 operation => 'tuple reification',
                 expected  => $field,
-                got       => $value;
+                got       => $value
         }
     }
 }
@@ -250,7 +250,7 @@ my class CoercedTupleIterator does TupleIterator {
                     die X::Data::Record::TypeCheck.new:
                         operation => 'tuple reification',
                         expected  => $field,
-                        got       => $value;
+                        got       => $value
                 }
             } elsif $value ~~ $field.for {
                 CATCH { default { return self.pull-one } }
