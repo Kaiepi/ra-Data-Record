@@ -1,4 +1,4 @@
-use v6.e.PREVIEW;
+use v6.d;
 use Data::Record::Instance;
 use Data::Record::Exceptions;
 use MetamodelX::RecordHOW;
@@ -338,6 +338,7 @@ method antipairs(::?CLASS:D: --> Mu) { %!record.antipairs }
 multi sub circumfix:<{@ @}>(Pair:D $pair is raw, Str:_ :$name, Bool:D :$structural = False --> Mu) is export {
     my Mu $record   := MetamodelX::RecordHOW.new_type: :$name;
     my Mu $delegate := Data::Record::Map.^parameterize: :$structural;
+    $record.^set_language_version;
     $record.^set_delegate: $delegate;
     $record.^set_fields: $pair;
     $record.^set_parameters: :$structural;
@@ -347,6 +348,7 @@ multi sub circumfix:<{@ @}>(Pair:D $pair is raw, Str:_ :$name, Bool:D :$structur
 multi sub circumfix:<{@ @}>(+pairs where pairs.all ~~ Pair:D, Str:_ :$name, Bool:D :$structural = False --> Mu) is export {
     my Mu $record   := MetamodelX::RecordHOW.new_type: :$name;
     my Mu $delegate := Data::Record::Map.^parameterize: :$structural;
+    $record.^set_language_version;
     $record.^set_delegate: $delegate;
     $record.^set_fields: pairs;
     $record.^set_parameters: :$structural;

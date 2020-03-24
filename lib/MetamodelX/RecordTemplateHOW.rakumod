@@ -1,4 +1,4 @@
-use v6.e.PREVIEW;
+use v6.d;
 use MetamodelX::RecordHOW;
 unit class MetamodelX::RecordTemplateHOW does Metamodel::Naming;
 
@@ -53,6 +53,7 @@ method !do_parameterization(Mu $obj is raw, (@pos, %named) --> Mu) {
                  ']';
 
     my Mu $record := MetamodelX::RecordHOW.new_type: :$name;
+    $record.^set_language_version;
     $record.^set_template: $obj;
     $record.^set_delegate: $!delegate;
     $record.^set_fields: $fields;

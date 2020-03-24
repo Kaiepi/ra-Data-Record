@@ -1,4 +1,4 @@
-use v6.e.PREVIEW;
+use v6.d;
 unit role Data::Record::Instance[::T];
 
 proto method new(::?CLASS:_: |)                                 {*}

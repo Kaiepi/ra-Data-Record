@@ -1,4 +1,4 @@
-use v6.e.PREVIEW;
+use v6.d;
 unit module Data::Record::Operators;
 
 #|[ Creates a new record type for a tuple. ]

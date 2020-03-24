@@ -1,4 +1,4 @@
-use v6.e.PREVIEW;
+use v6.d;
 use Data::Record;
 use Test;
 

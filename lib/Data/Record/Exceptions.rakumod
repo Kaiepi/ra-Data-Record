@@ -1,4 +1,4 @@
-use v6.e.PREVIEW;
+use v6.d;
 
 my role X::Data::Record is export { }
 

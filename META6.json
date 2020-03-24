@@ -7,7 +7,7 @@
   "description" : "Record types!",
   "license" : "Artistic-2.0",
   "name" : "Data::Record",
-  "perl" : "6.e.PREVIEW",
+  "perl" : "6.d",
   "provides" : {
     "Data::Record" : "lib/Data/Record.rakumod",
     "Data::Record::Exceptions" : "lib/Data/Record/Exceptions.rakumod",

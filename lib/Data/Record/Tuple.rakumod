@@ -1,4 +1,4 @@
-use v6.e.PREVIEW;
+use v6.d;
 use Data::Record::Instance;
 use Data::Record::Exceptions;
 use MetamodelX::RecordHOW;
@@ -452,6 +452,7 @@ method antipairs(::?CLASS:D: --> Mu) { @!record.antipairs }
 
 multi sub circumfix:«<@ @>»(+values, Str:_ :$name --> Mu) is export {
     my Mu $record = MetamodelX::RecordHOW.new_type: :$name;
+    $record.^set_language_version;
     $record.^set_delegate: Data::Record::Tuple;
     $record.^set_fields: values;
     $record.^set_parameters;

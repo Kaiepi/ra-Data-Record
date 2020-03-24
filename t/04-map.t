@@ -1,4 +1,4 @@
-use v6.e.PREVIEW;
+use v6.d;
 use Data::Record::Exceptions;
 use Data::Record::Operators;
 use Data::Record::Map;

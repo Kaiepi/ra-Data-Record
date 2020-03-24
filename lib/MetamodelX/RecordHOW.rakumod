@@ -1,4 +1,4 @@
-use v6.e.PREVIEW;
+use v6.d;
 use Data::Record::Exceptions;
 unit class MetamodelX::RecordHOW is Metamodel::ClassHOW;
 
