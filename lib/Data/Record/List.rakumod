@@ -338,6 +338,19 @@ multi sub circumfix:<[@ @]>(Block:D $block is raw, Str:_ :$name --> Mu) is expor
         Data::Record::List, $block, :$name
 }
 
+multi sub infix:«(><)»(List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
+    $rhs.new: $lhs
+}
+multi sub infix:«(><)»(Data::Record::List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
+    $rhs.new: $lhs.record
+}
+multi sub infix:«(><)»(Data::Record::List:U $lhs is raw, List:D $rhs is raw --> Data::Record::List:D) is export {
+    $lhs.new: $rhs
+}
+multi sub infix:«(><)»(Data::Record::List:U $lhs is raw, Data::Record::List:D $rhs is raw --> Data::Record::List:D) is export {
+    $lhs.new: $rhs.record
+}
+
 multi sub infix:«(<<)»(List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
     $rhs.new: $lhs, :consume
 }
@@ -375,19 +388,6 @@ multi sub infix:«(<>)»(Data::Record::List:U $lhs is raw, List:D $rhs is raw --
 }
 multi sub infix:«(<>)»(Data::Record::List:U $lhs is raw, Data::Record::List:D $rhs is raw --> Data::Record::List:D) is export {
     $lhs.new: $rhs.record, :coerce
-}
-
-multi sub infix:«(><)»(List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
-    $rhs.new: $lhs
-}
-multi sub infix:«(><)»(Data::Record::List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
-    $rhs.new: $lhs.record
-}
-multi sub infix:«(><)»(Data::Record::List:U $lhs is raw, List:D $rhs is raw --> Data::Record::List:D) is export {
-    $lhs.new: $rhs
-}
-multi sub infix:«(><)»(Data::Record::List:U $lhs is raw, Data::Record::List:D $rhs is raw --> Data::Record::List:D) is export {
-    $lhs.new: $rhs.record
 }
 
 multi sub infix:<eqv>(List:D $lhs is raw, Data::Record::List:D $rhs is raw --> Bool:D) is export {
