@@ -1,5 +1,6 @@
 use v6.d;
 use Data::Record::Operators;
+use Data::Record::Instance;
 use Data::Record::Tuple;
 use Data::Record::List;
 use Data::Record::Map;
@@ -10,6 +11,7 @@ sub EXPORT(--> Map:D) {
 }
 unit module Data::Record:auth<github:Kaiepi>:ver<0.0.1>:api<0>;
 
-constant Tuple = Data::Record::Tuple;
-constant List  = Data::Record::List;
-constant Map   = Data::Record::Map;
+constant Instance = Data::Record::Instance;
+constant Tuple    = Data::Record::Tuple;
+constant List     = Data::Record::List;
+constant Map      = Data::Record::Map;
