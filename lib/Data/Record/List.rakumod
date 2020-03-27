@@ -107,10 +107,7 @@ my class LaxListIterator does ListIterator {
                         ?? $value
                         !! $!field.new: $value.record, |%!named-args
                 } else {
-                    die X::Data::Record::TypeCheck.new:
-                        operation => 'list reification',
-                        expected  => $!field,
-                        got       => $value;
+                    self.pull-one
                 }
             } elsif $value ~~ $!field.for {
                 CATCH { default { return self.pull-one } }
