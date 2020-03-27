@@ -150,7 +150,7 @@ proto sub unrecord(Mu --> Mu) {*}
 multi sub unrecord(Data::Record::Instance:D \recorded --> Mu) {
     recorded.unrecord
 }
-multi sub unrecord(Mu \value is raw --> Mu) {
+multi sub unrecord(Mu \value --> Mu) is raw {
     value
 }
 
