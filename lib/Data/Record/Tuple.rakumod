@@ -106,7 +106,7 @@ my class WrappedTupleIterator does TupleIterator {
     }
 }
 
-method wrap(::THIS ::?CLASS:_ \: ::T List:D $original is raw --> List:D) {
+method wrap(::THIS ::?CLASS:_: ::T List:D $original is raw --> List:D) {
     T.from-iterator: WrappedTupleIterator.new: THIS, @.fields, $original
 }
 
@@ -155,7 +155,7 @@ my class ConsumedTupleIterator does TupleIterator {
     }
 }
 
-method consume(::THIS ::?CLASS:_ \: ::T List:D $original is raw --> List:D) {
+method consume(::THIS ::?CLASS:_: ::T List:D $original is raw --> List:D) {
     T.from-iterator: ConsumedTupleIterator.new: THIS, @.fields, $original
 }
 
@@ -216,7 +216,7 @@ my class SubsumedTupleIterator does TupleIterator {
     }
 }
 
-method subsume(::THIS ::?CLASS:_ \: ::T List:D $original is raw --> List:D) {
+method subsume(::THIS ::?CLASS:_: ::T List:D $original is raw --> List:D) {
     T.from-iterator: SubsumedTupleIterator.new: THIS, @.fields, $original
 }
 
@@ -269,7 +269,7 @@ my class CoercedTupleIterator does TupleIterator {
     }
 }
 
-method coerce(::THIS ::?CLASS:_ \: ::T List:D $original is raw --> List:D) {
+method coerce(::THIS ::?CLASS:_: ::T List:D $original is raw --> List:D) {
     T.from-iterator: CoercedTupleIterator.new: THIS, @.fields, $original
 }
 
@@ -350,7 +350,7 @@ method EXISTS-POS(::?CLASS:D: Int:D $pos --> Bool:D) {
     @!record[$pos]:exists
 }
 
-method AT-POS(::THIS ::?CLASS:D \: Int:D $pos --> Mu) is raw {
+method AT-POS(::THIS ::?CLASS:D: Int:D $pos --> Mu) is raw {
     die X::Data::Record::OutOfBounds.new(
         type => THIS,
         what => 'index',
@@ -360,7 +360,7 @@ method AT-POS(::THIS ::?CLASS:D \: Int:D $pos --> Mu) is raw {
     @!record[$pos]
 }
 
-method BIND-POS(::THIS ::?CLASS:D \: Int:D $pos, Mu $value is raw --> Mu) is raw {
+method BIND-POS(::THIS ::?CLASS:D: Int:D $pos, Mu $value is raw --> Mu) is raw {
     die X::Data::Record::OutOfBounds.new(
         type => THIS,
         what => 'index',
@@ -372,7 +372,7 @@ method BIND-POS(::THIS ::?CLASS:D \: Int:D $pos, Mu $value is raw --> Mu) is raw
         :operation<binding>
 }
 
-method ASSIGN-POS(::THIS ::?CLASS:D \: Int:D $pos, Mu $value is raw --> Mu) is raw {
+method ASSIGN-POS(::THIS ::?CLASS:D: Int:D $pos, Mu $value is raw --> Mu) is raw {
     die X::Data::Record::OutOfBounds.new(
         type => THIS,
         what => 'index',
