@@ -180,11 +180,11 @@ method record(::?CLASS:D: --> Map:D) { %!record }
 method unrecord(::?CLASS:D: --> Map:D) {
     %!record.new: %!record.kv.map: &unrecord
 }
-proto sub unrecord(Mu, Mu --> Mu) is raw {*}
-multi sub unrecord(Mu \key, Data::Record::Instance:D \recorded --> Mu) is default is raw {
+proto sub unrecord(Mu, Mu --> Pair:D) {*}
+multi sub unrecord(Mu \key, Data::Record::Instance:D \recorded --> Pair:D) is default {
     (key) => recorded.unrecord
 }
-multi sub unrecord(Mu \key, Mu \value --> Mu) is raw {
+multi sub unrecord(Mu \key, Mu \value --> Pair:D) {
     (key) => value
 }
 
