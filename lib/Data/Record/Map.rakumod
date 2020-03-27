@@ -27,7 +27,7 @@ multi method new(::?CLASS:_: Map:D $original is raw, Bool:D :$coerce! where ?*) 
     self.bless: :%record
 }
 
-method !take-record(Mu $field is raw, Mu $key is raw, Mu $value is raw, *%named-args --> Nil) {
+method !take-record(::?CLASS:_: Mu $field is raw, Mu $key is raw, Mu $value is raw, *%named-args --> Nil) {
     if $value ~~ Data::Record::Instance {
         if $value.DEFINITE {
             take-rw ($key => $value ~~ $field
