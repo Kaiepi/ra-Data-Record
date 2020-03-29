@@ -2,3 +2,7 @@ Revision history for Data::Record
 
 v0.0.1:
     - Initial release.
+
+v0.0.2:
+    - Use .pm6 as the modules' file extension, not .rakumod, to preserve
+      compatibility with older compiler releases.
