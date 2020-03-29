@@ -1,6 +1,6 @@
 =begin pod
 
-[![Build Status](https://travis-ci.com/Kaiepi/p6-Data-Record.svg?branch=master)](https://travis-ci.com/Kaiepi/p6-Data-Record)
+[![Build Status](https://travis-ci.com/Kaiepi/p6-Data-Record.svg?branch=master)](https://travis-ci.com/Kaiepi/ra-Data-Record)
 
 =head1 NAME
 
