@@ -8,7 +8,11 @@ unit role Data::Record::Map[Bool:D :$structural! where !*]
      does Iterable
      does Associative;
 
-has %!record is built(:bind);
+has %!record;
+
+submethod BUILD(::?CLASS:D: :%record! --> Nil) {
+    %!record := %record;
+}
 
 multi method new(::?CLASS:_: Map:D $original is raw) {
     my %record := self.wrap: $original;

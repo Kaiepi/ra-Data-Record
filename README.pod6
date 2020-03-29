@@ -61,10 +61,8 @@ Data structures can then be coerced to these record types using the coercion
 operators provided, some of which will sanitize them, all of which allow for
 efficient typechecking for common operations you can do with them.
 
-For documentation on how this library can be used, check the
+For documentation on how this library can be used, refer to the
 L<wiki|https://github.com/Kaiepi/p6-Data-Record/wiki/>.
-
-B<Requires a compiler release of v2020.03 or later.>
 
 =head1 AUTHOR
 
