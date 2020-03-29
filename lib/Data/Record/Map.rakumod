@@ -31,7 +31,7 @@ multi method new(::?CLASS:_: Map:D $original is raw, Bool:D :$coerce! where ?*) 
     self.bless: :%record
 }
 
-method !take-record(::?CLASS:_: Mu $field is raw, Mu $key is raw, Mu $value is raw, *%named-args --> Nil) {
+sub take-record(Mu $field is raw, Mu $key is raw, Mu $value is raw, *%named-args --> Nil) {
     if $value ~~ Data::Record::Instance {
         if $value.DEFINITE {
             take-rw ($key => $value ~~ $field
@@ -72,7 +72,7 @@ method wrap(::THIS ::?CLASS:_: Map:D $original is raw --> Map:D) {
         my Mu $field := %.fields{$key};
         my Mu $value := $original{$key};
         if $field ~~ Data::Record::Instance {
-            self!take-record: $field, $key, $value;
+            take-record $field, $key, $value;
         } elsif $value ~~ $field {
             take-rw ($key => $value);
         } else {
@@ -98,7 +98,7 @@ method consume(::THIS ::?CLASS:_: Map:D $original is raw --> Map:D) {
         my Mu $field := %.fields{$key};
         my Mu $value := $original{$key};
         if $field ~~ Data::Record::Instance {
-            self!take-record: $field, $key, $value, :consume;
+            take-record $field, $key, $value, :consume;
         } elsif $value ~~ $field {
             take-rw ($key => $value);
         } else {
@@ -123,7 +123,7 @@ method subsume(::THIS ::?CLASS:_: Map:D $original is raw --> Map:D) {
         if $original{$key}:exists {
             my Mu $value := $original{$key};
             if $field ~~ Data::Record::Instance {
-                self!take-record: $field, $key, $value, :subsume;
+                take-record $field, $key, $value, :subsume;
             } elsif $value ~~ $field {
                 take-rw ($key => $value);
             } else {
@@ -152,7 +152,7 @@ method coerce(::THIS ::?CLASS:_: Map:D $original is raw --> Map:D) {
         if $original{$key}:exists {
             my Mu $value := $original{$key};
             if $field ~~ Data::Record::Instance {
-                self!take-record: $field, $key, $value, :coerce;
+                take-record $field, $key, $value, :coerce;
             } elsif $value ~~ $field {
                 take-rw ($key => $value);
             } else {
