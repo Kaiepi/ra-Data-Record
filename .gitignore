@@ -5,4 +5,4 @@
 /resources/*.so
 /resources/*.dylib
 .precomp/
-/Structured-Data-*
+/Data-Record-*
