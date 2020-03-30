@@ -13,3 +13,6 @@ v0.0.3:
 v0.0.4:
     - Remove redundant gist method candidates from Data::Record::Map and
       Data::Record::Tuple, which prevented the method from being called.
+
+v0.0.5:
+    - Fix handling of containers with some array op and private helper methods.
