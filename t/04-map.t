@@ -7,7 +7,7 @@ use Test;
 plan 3;
 
 subtest 'basic', {
-    plan 43;
+    plan 46;
 
     my Mu    \NameMap = Mu;
     my Str:D $name    = 'NameMap';
@@ -141,30 +141,48 @@ subtest 'basic', {
     }, X::Data::Record::Immutable,
       'cannot delete keys from a map';
 
+    %map := %(
+        name  => 'Kaiepi',
+        items => []
+    ) (<>) ({@
+        name  => Str:D,
+        items => Array:D[Str:D],
+    @} :name('NameItemsMap'));
+
+    lives-ok {
+        %map.push: 'items', 'ok'
+    }, 'can push to array fields in a record map using a key/value pair';
+    lives-ok {
+        %map.push: (items => 'ok 2 electric boogaloo');
+    }, 'can push to array fields in a record map using a pair';
+    throws-like {
+        %map.push: 'name', 'Mrofnet'
+    }, X::Data::Record::TypeCheck,
+      'cannot push to existing non-array keys in a record map using a key/value pair';
+    throws-like {
+        %map.push: (name => 'Mrofnet');
+    }, X::Data::Record::TypeCheck,
+      'cannot push to existing non-array keys in a record map using a pair';
     throws-like {
         %map.push: 'foo', 'bar'
-    }, X::Data::Record::Immutable,
-      'cannot push to a map';
+    }, X::Data::Record::OutOfBounds,
+      'cannot push a key/value pair whose key does not exist in the record type';
     throws-like {
-        %map.pop
-    }, X::Data::Record::Immutable,
-      'cannot pop from a map';
+        %map.push: (foo => 'bar')
+    }, X::Data::Record::OutOfBounds,
+      'cannot push a pair whose key does not exist in the record type';
+
+    lives-ok {
+        %map.append: 'items', <wew lad>
+    }, 'can append to array fields in a record map';
     throws-like {
-        %map.shift
-    }, X::Data::Record::Immutable,
-      'cannot shift from a map';
+        %map.append: 'name', 'Mrofnet'
+    }, X::Data::Record::TypeCheck,
+      'cannot append to existing keys non-array keys in a record map';
     throws-like {
-        %map.unshift: 'foo', 'bar'
-    }, X::Data::Record::Immutable,
-      'cannot unshift to a map';
-    throws-like {
-        %map.append: { foo => 'bar' }
-    }, X::Data::Record::Immutable,
-      'cannot append to a map';
-    throws-like {
-        %map.prepend: { foo => 'bar' }
-    }, X::Data::Record::Immutable,
-      'cannot prepend to a map';
+        %map.append: 'foo', 'bar'
+    }, X::Data::Record::OutOfBounds,
+      'cannot append a value for a key that does not exist in the record type';
 };
 
 subtest 'generic', {

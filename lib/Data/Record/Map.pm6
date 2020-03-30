@@ -285,40 +285,68 @@ method DELETE-KEY(::THIS ::?ROLE:D: Mu --> Mu) {
         type      => THIS
 }
 
-method push(::THIS ::?ROLE:D: | --> Mu) {
-    die X::Data::Record::Immutable.new:
-        operation => 'push',
-        type      => THIS
+# Performs an array op (push/append) for a list of values in a gather.
+#
+# "But this will never take any values! What's the point of this?"
+#
+# The point of this is to defer typechecking errors until the array op iterates
+# over the Seq created with this, since Hash array ops have exceptions of their
+# own that are best left to their corresponding methods to handle.
+method !array-op-for-values(::?ROLE:D: @values, &op, Str:D :$operation! --> Map:D) {
+    my Mu     $key;
+    my Bool:D $has-key = False;
+    for @values -> Mu $value is raw {
+        if $has-key {
+            # We have a key from the last iteration.
+            $has-key = False;
+            self!array-op-for-pair: $key, $value, &op, :$operation;
+        } elsif $value ~~ Pair:D {
+            # We have a pair; no need to buffer.
+            self!array-op-for-pair: $value.key, $value.value, &op, :$operation;
+        } else {
+            # We have a key; hope there's a value to go with it!
+            $key     := $value;
+            $has-key  = True;
+        }
+    }
+}
+method !array-op-for-pair(::THIS ::?ROLE:D: Mu $key is raw, Mu $value is raw, &op, Str:D :$operation! --> Nil) {
+    my %fields := %.fields;
+    if %fields{$key}:exists {
+        my Mu $field := %fields{$key};
+        if $field ~~ Data::Record::Instance[List] | Array {
+            # Perform the array op now, since this value doesn't
+            # necessarily typecheck against Array, which the corresponding
+            # Hash method expects.
+            op $key, $value
+        } else {
+            # A field for this key already exists, but isn't an array of
+            # some sort; this can't possibly typecheck.
+            die X::Data::Record::TypeCheck.new:
+                operation => $operation,
+                expected  => $field,
+                got       => $value
+        }
+    } else {
+        die X::Data::Record::OutOfBounds.new:
+            type => THIS,
+            what => 'key',
+            key  => $key
+    }
 }
 
-method pop(::THIS ::?ROLE:D: | --> Mu) {
-    die X::Data::Record::Immutable.new:
-        operation => 'pop',
-        type      => THIS
+method push(::THIS ::?ROLE:D: +values --> ::?ROLE:D) {
+    %!record.push: gather self!array-op-for-values: values, -> Mu \key, Mu \value {
+        %!record{key}.push: value
+    }, :operation<push>;
+    self
 }
 
-method shift(::THIS ::?ROLE:D: | --> Mu) {
-    die X::Data::Record::Immutable.new:
-        operation => 'shift',
-        type      => THIS
-}
-
-method unshift(::THIS ::?ROLE:D: | --> Mu) {
-    die X::Data::Record::Immutable.new:
-        operation => 'unshift',
-        type      => THIS
-}
-
-method append(::THIS ::?ROLE:D: | --> Mu) {
-    die X::Data::Record::Immutable.new:
-        operation => 'append',
-        type      => THIS
-}
-
-method prepend(::THIS ::?ROLE:D: | --> Mu) {
-    die X::Data::Record::Immutable.new:
-        operation => 'prepend',
-        type      => THIS
+method append(::THIS ::?ROLE:D: +values --> ::?ROLE:D) {
+    %!record.append: gather self!array-op-for-values: values, -> Mu \key, Mu \value {
+        %!record{key}.append: |value
+    }, :operation<append>;
+    self
 }
 
 method iterator(::?ROLE:D: --> Mu)  { %!record.iterator }
