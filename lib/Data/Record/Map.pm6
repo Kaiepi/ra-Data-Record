@@ -285,67 +285,99 @@ method DELETE-KEY(::THIS ::?ROLE:D: Mu --> Mu) {
         type      => THIS
 }
 
-# Performs an array op (push/append) for a list of values in a gather.
+# An iterator that wraps the list of values passed to Hash array ops
+# (push/append).
 #
-# "But this will never take any values! What's the point of this?"
+# "But this never returns anything besides IterationEnd on pull? What's the
+# point of this?"
 #
-# The point of this is to defer typechecking errors until the array op iterates
-# over the Seq created with this, since Hash array ops have exceptions of their
-# own that are best left to their corresponding methods to handle.
-method !array-op-for-values(::?ROLE:D: @values, &op, Str:D :$operation!) {
-    my Mu     $key;
-    my Bool:D $has-key = False;
-    for @values -> Mu $value is raw {
-        if $has-key {
-            # We have a key from the last iteration.
-            $has-key = False;
-            self!array-op-for-pair: $key, $value, &op, :$operation;
-        } elsif $value ~~ Pair:D {
-            # We have a pair; no need to buffer.
-            self!array-op-for-pair: $value.key, $value.value, &op, :$operation;
+# Hash array methods have exceptions of their own that they throw. The point of
+# this is to ensure typechecking gets deferred until Hash's methods iterate
+# over this so those get handled properly.
+my role ArrayIterator does Iterator {
+    has Mu         $!type   is required;
+    has            %!record is required;
+    has            %!fields is required;
+    has Iterator:D $!values is required;
+
+    submethod BUILD(::?ROLE:D: Mu :$type! is raw, :%record!, :%fields!, :@values --> Nil) {
+        $!type   := $type;
+        %!record := %record;
+        %!fields := %fields;
+        $!values := @values.iterator;
+    }
+
+    method new(::?ROLE:_: Mu $type is raw, %record, %fields, @values --> ::?ROLE:D) {
+        self.bless: :$type, :%record, :%fields, :@values
+    }
+
+    method pull-one(::?CLASS:D: --> Mu) is raw {
+        my Mu     $key;
+        my Bool:D $has-key = False;
+        until (my Mu $value := $!values.pull-one) =:= IterationEnd {
+            if $has-key {
+                $has-key = False;
+                self!pull-one-pair: $key, $value;
+            } elsif $value ~~ Pair:D {
+                self!pull-one-pair: $value.key, $value.value;
+            } else {
+                $key     := $value;
+                $has-key  = True;
+                next;
+            }
+        }
+        IterationEnd
+    }
+
+    method !pull-one-pair(::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) is raw {
+        if %!fields{$key}:exists {
+            my Mu $field := %!fields{$key};
+            if $field ~~ Data::Record::Instance[List] | Array {
+                self!perform-array-op: $key, $value
+            } else {
+                die X::Data::Record::TypeCheck.new:
+                    operation => $.operation,
+                    expected  => $field,
+                    got       => $value
+            }
         } else {
-            # We have a key; hope there's a value to go with it!
-            $key     := $value;
-            $has-key  = True;
+            die X::Data::Record::OutOfBounds.new:
+                type => $!type,
+                what => 'key',
+                key  => $key
         }
     }
+
+    method operation(::?CLASS:D: --> Str:D) { ... }
+
+    method !perform-array-op(::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) { ... }
+
+    method is-lazy(::?CLASS:D: --> Bool:D) { $!values.is-lazy }
 }
-method !array-op-for-pair(::THIS ::?ROLE:D: Mu $key is raw, Mu $value is raw, &op, Str:D :$operation! --> Nil) {
-    my %fields := %.fields;
-    if %fields{$key}:exists {
-        my Mu $field := %fields{$key};
-        if $field ~~ Data::Record::Instance[List] | Array {
-            # Perform the array op now, since this value doesn't
-            # necessarily typecheck against Array, which the corresponding
-            # Hash method expects.
-            op $key, $value
-        } else {
-            # A field for this key already exists, but isn't an array of
-            # some sort; this can't possibly typecheck.
-            die X::Data::Record::TypeCheck.new:
-                operation => $operation,
-                expected  => $field,
-                got       => $value
-        }
-    } else {
-        die X::Data::Record::OutOfBounds.new:
-            type => THIS,
-            what => 'key',
-            key  => $key
+
+my class PushIterator does ArrayIterator {
+    method operation(::?CLASS:D: --> 'push') { }
+
+    method !perform-array-op(::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) {
+        %!record{$key}.push: $value
     }
 }
 
 method push(::THIS ::?ROLE:D: +values --> ::?ROLE:D) {
-    %!record.push: gather self!array-op-for-values: values, -> Mu \key, Mu \value {
-        %!record{key}.push: value
-    }, :operation<push>;
+    %!record.push: Seq.new: PushIterator.new: THIS, %!record, %.fields, values;
     self
 }
 
+my class AppendIterator does ArrayIterator {
+    method operation(::?CLASS:D: --> 'append') { }
+
+    method !perform-array-op(::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) {
+        %!record{$key}.append: |$value
+    }
+}
+
 method append(::THIS ::?ROLE:D: +values --> ::?ROLE:D) {
-    %!record.append: gather self!array-op-for-values: values, -> Mu \key, Mu \value {
-        %!record{key}.append: |value
-    }, :operation<append>;
+    %!record.append: Seq.new: AppendIterator.new: THIS, %!record, %.fields, values;
     self
 }
 
