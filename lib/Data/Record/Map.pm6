@@ -292,7 +292,7 @@ method DELETE-KEY(::THIS ::?ROLE:D: Mu --> Mu) {
 # The point of this is to defer typechecking errors until the array op iterates
 # over the Seq created with this, since Hash array ops have exceptions of their
 # own that are best left to their corresponding methods to handle.
-method !array-op-for-values(::?ROLE:D: @values, &op, Str:D :$operation! --> Map:D) {
+method !array-op-for-values(::?ROLE:D: @values, &op, Str:D :$operation!) {
     my Mu     $key;
     my Bool:D $has-key = False;
     for @values -> Mu $value is raw {
