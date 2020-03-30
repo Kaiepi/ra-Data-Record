@@ -16,3 +16,8 @@ v0.0.4:
 
 v0.0.5:
     - Fix handling of containers with some array op and private helper methods.
+
+v0.0.6:
+    - Implement push and append methods for Data::Record::Map and remove its
+      pop, shift, unshift, and prepend methods in order for it to match Hash's
+      API.
