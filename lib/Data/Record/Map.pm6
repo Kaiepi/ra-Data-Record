@@ -18,15 +18,15 @@ multi method new(::?ROLE:_: Map:D $original is raw --> ::?ROLE:D) {
     my %record := self.wrap: $original;
     self.bless: :%record
 }
-multi method new(::?ROLE:_: Map:D $original is raw, Bool:D :$consume! where ?* --> ::?ROLE:D) {
+multi method new(::?ROLE:_: Map:D $original is raw, Bool:D :consume($)! where ?* --> ::?ROLE:D) {
     my %record := self.consume: $original;
     self.bless: :%record
 }
-multi method new(::?ROLE:_: Map:D $original is raw, Bool:D :$subsume! where ?* --> ::?ROLE:D) {
+multi method new(::?ROLE:_: Map:D $original is raw, Bool:D :subsume($)! where ?* --> ::?ROLE:D) {
     my %record := self.subsume: $original;
     self.bless: :%record
 }
-multi method new(::?ROLE:_: Map:D $original is raw, Bool:D :$coerce! where ?* --> ::?ROLE:D) {
+multi method new(::?ROLE:_: Map:D $original is raw, Bool:D :coerce($)! where ?* --> ::?ROLE:D) {
     my %record := self.coerce: $original;
     self.bless: :%record
 }
