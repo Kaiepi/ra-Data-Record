@@ -10,26 +10,26 @@ unit role Data::Record::List
 
 has @!record;
 
-submethod BUILD(::?CLASS:D: :@record! --> Nil) {
+submethod BUILD(::?ROLE:D: :@record! --> Nil) {
     @!record := @record;
 }
 
-multi method new(::?CLASS:_: List:D $original is raw) {
+multi method new(::?ROLE:_: List:D $original is raw --> ::?ROLE:D) {
     my @record := self.wrap: $original;
     @record.elems unless @record.is-lazy; # Reify eager lists for eager typechecking.
     self.bless: :@record
 }
-multi method new(::?CLASS:_: List:D $original is raw, Bool:D :$consume! where ?*) {
+multi method new(::?ROLE:_: List:D $original is raw, Bool:D :$consume! where ?* --> ::?ROLE:D) {
     my @record := self.consume: $original;
     @record.elems unless @record.is-lazy; # Reify eager lists for eager typechecking.
     self.bless: :@record
 }
-multi method new(::?CLASS:_: List:D $original is raw, Bool:D :$subsume! where ?*) {
+multi method new(::?ROLE:_: List:D $original is raw, Bool:D :$subsume! where ?* --> ::?ROLE:D) {
     my @record := self.subsume: $original;
     @record.elems unless @record.is-lazy; # Reify eager lists for eager typechecking.
     self.bless: :@record
 }
-multi method new(::?CLASS:_: List:D $original is raw, Bool:D :$coerce! where ?*) {
+multi method new(::?ROLE:_: List:D $original is raw, Bool:D :$coerce! where ?* --> ::?ROLE:D) {
     my @record := self.coerce: $original;
     @record.elems unless @record.is-lazy; # Reify eager lists for eager typechecking.
     self.bless: :@record
@@ -46,7 +46,7 @@ my role ListIterator does Iterator {
         $!values := $record.iterator;
     }
 
-    method new(::?CLASS:_: Mu $field is raw, List:D $record is raw, *%named-args) {
+    method new(::?CLASS:_: Mu $field is raw, List:D $record is raw, *%named-args --> ::?ROLE:D) {
         self.bless: :$field, :$record, :%named-args
     }
 
@@ -127,27 +127,27 @@ my class LaxListIterator does ListIterator {
     }
 }
 
-method wrap(::?CLASS:_: ::T List:D $original is raw --> List:D) {
+method wrap(::?ROLE:_: ::T List:D $original is raw --> List:D) {
     T.from-iterator: StrictListIterator.new: @.fields[0], $original
 }
 
-method consume(::?CLASS:_: ::T List:D $original is raw --> List:D) {
+method consume(::?ROLE:_: ::T List:D $original is raw --> List:D) {
     T.from-iterator: LaxListIterator.new: @.fields[0], $original, :consume
 }
 
-method subsume(::?CLASS:_: ::T List:D $original is raw --> List:D) {
+method subsume(::?ROLE:_: ::T List:D $original is raw --> List:D) {
     T.from-iterator: StrictListIterator.new: @.fields[0], $original, :subsume
 }
 
-method coerce(::?CLASS:_: ::T List:D $original is raw --> List:D) {
+method coerce(::?ROLE:_: ::T List:D $original is raw --> List:D) {
     T.from-iterator: LaxListIterator.new: @.fields[0], $original, :coerce
 }
 
-method fields(::?CLASS:_: --> List:D) { self.^fields }
+method fields(::?ROLE:_: --> List:D) { self.^fields }
 
-method record(::?CLASS:D: --> List:D) { @!record }
+method record(::?ROLE:D: --> List:D) { @!record }
 
-method unrecord(::?CLASS:D: --> List:D) {
+method unrecord(::?ROLE:D: --> List:D) {
     @!record.WHAT.from-iterator: @!record.map(&unrecord).iterator
 }
 proto sub unrecord(Mu --> Mu) {*}
@@ -158,21 +158,21 @@ multi sub unrecord(Mu \value --> Mu) is raw {
     value
 }
 
-multi method raku(::?CLASS:U: --> Str:D) {
+multi method raku(::?ROLE:U: --> Str:D) {
     my Str:D $raku = '[@ ' ~ @.fields[0].raku ~ ' @]';
     my Str:D $name = self.^name;
     $raku ~= ":name('$name')" unless $name eq MetamodelX::RecordHOW::ANON_NAME;
     $raku
 }
 
-multi method ACCEPTS(::?CLASS:U: List:D $list is raw --> Bool:D) {
+multi method ACCEPTS(::?ROLE:U: List:D $list is raw --> Bool:D) {
     so $list.all ~~ @.fields[0]
 }
-multi method ACCEPTS(::?CLASS:D: |args --> Bool:D) {
+multi method ACCEPTS(::?ROLE:D: |args --> Bool:D) {
     @!record.ACCEPTS: |args
 }
 
-method !op-for-value(::?CLASS:D: Mu $value is raw, &op, Str:D :$operation! --> Mu) {
+method !op-for-value(::?ROLE:D: Mu $value is raw, &op, Str:D :$operation! --> Mu) {
     my Mu $field := @.fields[0];
     if $field ~~ Data::Record::Instance {
         if $value ~~ Data::Record::Instance {
@@ -204,7 +204,7 @@ method !op-for-value(::?CLASS:D: Mu $value is raw, &op, Str:D :$operation! --> M
     }
 }
 
-method !op-for-values(::?CLASS:D: Iterable:D $values is raw, &op, Str:D :$operation! --> Mu) {
+method !op-for-values(::?ROLE:D: Iterable:D $values is raw, &op, Str:D :$operation! --> Mu) {
     op gather {
         my Mu $field := @.fields[0];
         if $field ~~ Data::Record::Instance {
@@ -244,85 +244,93 @@ method !op-for-values(::?CLASS:D: Iterable:D $values is raw, &op, Str:D :$operat
     }
 }
 
-method EXISTS-POS(::?CLASS:D: Int:D $pos --> Bool:D) {
+method EXISTS-POS(::?ROLE:D: Int:D $pos --> Bool:D) {
     @!record[$pos]:exists
 }
 
-method AT-POS(::?CLASS:D: Int:D $pos --> Mu) is raw {
+method AT-POS(::?ROLE:D: Int:D $pos --> Mu) is raw {
     @!record[$pos]
 }
 
-method BIND-POS(::?CLASS:D: Int:D $pos, Mu $value is raw --> Mu) is raw {
+method BIND-POS(::?ROLE:D: Int:D $pos, Mu $value is raw --> Mu) is raw {
     self!op-for-value: $value, { @!record[$pos] := $_ }, :operation<binding>
 }
 
-method ASSIGN-POS(::?CLASS:D: Int:D $pos, Mu $value is raw --> Mu) is raw {
+method ASSIGN-POS(::?ROLE:D: Int:D $pos, Mu $value is raw --> Mu) is raw {
     self!op-for-value: $value, { @!record[$pos] = $_ }, :operation<assignment>
 }
 
-method DELETE-POS(::?CLASS:D: Int:D $pos --> Mu) is raw is default {
+method DELETE-POS(::?ROLE:D: Int:D $pos --> Mu) is raw is default {
     @!record[$pos]:delete
 }
 
 proto method push(|) {*}
-multi method push(::?CLASS:D: Mu $value is raw --> List:D) {
-    self!op-for-value: $value, { @!record.push: $_ }, :operation<push>
+multi method push(::?ROLE:D: Mu $value is raw --> ::?ROLE:D) {
+    self!op-for-value: $value, { @!record.push: $_ }, :operation<push>;
+    self
 }
-multi method push(::?CLASS:D: **@values --> List:D) {
-    self!op-for-values: @values, { @!record.push: |$_ }, :operation<push>
+multi method push(::?ROLE:D: **@values --> ::?ROLE:D) {
+    self!op-for-values: @values, { @!record.push: |$_ }, :operation<push>;
+    self
 }
 
-method pop(::?CLASS:D: --> Mu) {
+method pop(::?ROLE:D: --> Mu) {
     @!record.pop
 }
 
-method shift(::?CLASS:D: --> Mu) {
+method shift(::?ROLE:D: --> Mu) {
     @!record.shift
 }
 
 proto method unshift(|) {*}
-multi method unshift(::?CLASS:D: $value is raw --> List:D) {
-    self!op-for-value: $value, { @!record.unshift: $_ }, :operation<unshift>
+multi method unshift(::?ROLE:D: $value is raw --> ::?ROLE:D) {
+    self!op-for-value: $value, { @!record.unshift: $_ }, :operation<unshift>;
+    self
 }
-multi method unshift(::?CLASS:D: **@values --> List:D) {
-    self!op-for-values: @values, { @!record.unshift: |$_ }, :operation<unshift>
+multi method unshift(::?ROLE:D: **@values --> ::?ROLE:D) {
+    self!op-for-values: @values, { @!record.unshift: |$_ }, :operation<unshift>;
+    self
 }
 
 proto method prepend(|) {*}
-multi method prepend(::?CLASS:D: Iterable:D $values is raw --> List:D) {
-    self!op-for-values: $values, { @!record.prepend: $_ }, :operation<prepend>
+multi method prepend(::?ROLE:D: Iterable:D $values is raw --> ::?ROLE:D) {
+    self!op-for-values: $values, { @!record.prepend: $_ }, :operation<prepend>;
+    self
 }
-multi method prepend(::?CLASS:D: **@values --> List:D) {
-    self!op-for-values: @values, { @!record.prepend: |$_ }, :operation<prepend>
+multi method prepend(::?ROLE:D: **@values --> ::?ROLE:D) {
+    self!op-for-values: @values, { @!record.prepend: |$_ }, :operation<prepend>;
+    self
 }
 
 proto method append(|) {*}
-multi method append(::?CLASS:D: Iterable:D $values is raw --> List:D) {
-    self!op-for-values: $values, { @!record.append: $_ }, :operation<append>
+multi method append(::?ROLE:D: Iterable:D $values is raw --> ::?ROLE:D) {
+    self!op-for-values: $values, { @!record.append: $_ }, :operation<append>;
+    self
 }
-multi method append(::?CLASS:D: **@values --> List:D) {
-    self!op-for-values: @values, { @!record.append: |$_ }, :operation<append>
+multi method append(::?ROLE:D: **@values --> ::?ROLE:D) {
+    self!op-for-values: @values, { @!record.append: |$_ }, :operation<append>;
+    self
 }
 
-method eager(::?CLASS:D: --> ::?CLASS:D) {
+method eager(::?ROLE:D: --> ::?ROLE:D) {
     @!record.is-lazy ?? self.new(@.record.eager) !! self
 }
 
-method lazy(::?CLASS:D: --> ::?CLASS:D) {
+method lazy(::?ROLE:D: --> ::?ROLE:D) {
     @!record.is-lazy ?? self !! self.new(@.record.lazy)
 }
 
-method iterator(::?CLASS:D: --> Mu)  { @!record.iterator }
-method is-lazy(::?CLASS:D: --> Mu)   { @!record.is-lazy }
-method cache(::?CLASS:D: --> Mu)     { @!record.cache }
-method list(::?CLASS:D: --> Mu)      { self }
-method hash(::?CLASS:D: --> Mu)      { @!record.hash }
-method elems(::?CLASS:D: --> Mu)     { @!record.elems }
-method keys(::?CLASS:D: --> Mu)      { @!record.keys }
-method values(::?CLASS:D: --> Mu)    { @!record.values }
-method kv(::?CLASS:D: --> Mu)        { @!record.kv }
-method pairs(::?CLASS:D: --> Mu)     { @!record.pairs }
-method antipairs(::?CLASS:D: --> Mu) { @!record.antipairs }
+method iterator(::?ROLE:D: --> Mu)  { @!record.iterator }
+method is-lazy(::?ROLE:D: --> Mu)   { @!record.is-lazy }
+method cache(::?ROLE:D: --> Mu)     { @!record.cache }
+method list(::?ROLE:D: --> Mu)      { self }
+method hash(::?ROLE:D: --> Mu)      { @!record.hash }
+method elems(::?ROLE:D: --> Mu)     { @!record.elems }
+method keys(::?ROLE:D: --> Mu)      { @!record.keys }
+method values(::?ROLE:D: --> Mu)    { @!record.values }
+method kv(::?ROLE:D: --> Mu)        { @!record.kv }
+method pairs(::?ROLE:D: --> Mu)     { @!record.pairs }
+method antipairs(::?ROLE:D: --> Mu) { @!record.antipairs }
 
 multi sub circumfix:<[@ @]>(+values, Str:_ :$name --> Mu) is export {
     die 'Multi-parameter record lists NYI' if +values > 1;

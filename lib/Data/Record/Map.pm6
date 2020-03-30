@@ -10,23 +10,23 @@ unit role Data::Record::Map[Bool:D :$structural! where !*]
 
 has %!record;
 
-submethod BUILD(::?CLASS:D: :%record! --> Nil) {
+submethod BUILD(::?ROLE:D: :%record! --> Nil) {
     %!record := %record;
 }
 
-multi method new(::?CLASS:_: Map:D $original is raw) {
+multi method new(::?ROLE:_: Map:D $original is raw --> ::?ROLE:D) {
     my %record := self.wrap: $original;
     self.bless: :%record
 }
-multi method new(::?CLASS:_: Map:D $original is raw, Bool:D :$consume! where ?*) {
+multi method new(::?ROLE:_: Map:D $original is raw, Bool:D :$consume! where ?* --> ::?ROLE:D) {
     my %record := self.consume: $original;
     self.bless: :%record
 }
-multi method new(::?CLASS:_: Map:D $original is raw, Bool:D :$subsume! where ?*) {
+multi method new(::?ROLE:_: Map:D $original is raw, Bool:D :$subsume! where ?* --> ::?ROLE:D) {
     my %record := self.subsume: $original;
     self.bless: :%record
 }
-multi method new(::?CLASS:_: Map:D $original is raw, Bool:D :$coerce! where ?*) {
+multi method new(::?ROLE:_: Map:D $original is raw, Bool:D :$coerce! where ?* --> ::?ROLE:D) {
     my %record := self.coerce: $original;
     self.bless: :%record
 }
@@ -53,7 +53,7 @@ sub take-record(Mu $field is raw, Mu $key is raw, Mu $value is raw, *%named-args
     }
 }
 
-method wrap(::THIS ::?CLASS:_: Map:D $original is raw --> Map:D) {
+method wrap(::THIS ::?ROLE:_: Map:D $original is raw --> Map:D) {
     $original.new: gather for ($original.keys ∪ %.fields.keys).keys -> Mu $key is raw {
         die X::Data::Record::Extraneous.new(
             operation => 'map reification',
@@ -84,7 +84,7 @@ method wrap(::THIS ::?CLASS:_: Map:D $original is raw --> Map:D) {
     }
 }
 
-method consume(::THIS ::?CLASS:_: Map:D $original is raw --> Map:D) {
+method consume(::THIS ::?ROLE:_: Map:D $original is raw --> Map:D) {
     $original.new: gather for ($original.keys ∪ %.fields.keys).keys -> Mu $key is raw {
         next unless %.fields{$key}:exists;
 
@@ -110,7 +110,7 @@ method consume(::THIS ::?CLASS:_: Map:D $original is raw --> Map:D) {
     }
 }
 
-method subsume(::THIS ::?CLASS:_: Map:D $original is raw --> Map:D) {
+method subsume(::THIS ::?ROLE:_: Map:D $original is raw --> Map:D) {
     $original.new: gather for ($original.keys ∪ %.fields.keys).keys -> Mu $key is raw {
         die X::Data::Record::Extraneous.new(
             operation => 'map reification',
@@ -144,7 +144,7 @@ method subsume(::THIS ::?CLASS:_: Map:D $original is raw --> Map:D) {
     }
 }
 
-method coerce(::THIS ::?CLASS:_: Map:D $original is raw --> Map:D) {
+method coerce(::THIS ::?ROLE:_: Map:D $original is raw --> Map:D) {
     $original.new: gather for ($original.keys ∪ %.fields.keys).keys -> Mu $key is raw {
         next unless %.fields{$key}:exists;
 
@@ -173,15 +173,15 @@ method coerce(::THIS ::?CLASS:_: Map:D $original is raw --> Map:D) {
     }
 }
 
-method fields(::?CLASS:_: --> Map:D) {
+method fields(::?ROLE:_: --> Map:D) {
     state $fields;
     $fields := self.^fields.Map without $fields;
     $fields
 }
 
-method record(::?CLASS:D: --> Map:D) { %!record }
+method record(::?ROLE:D: --> Map:D) { %!record }
 
-method unrecord(::?CLASS:D: --> Map:D) {
+method unrecord(::?ROLE:D: --> Map:D) {
     %!record.new: %!record.kv.map: &unrecord
 }
 proto sub unrecord(Mu, Mu --> Pair:D) {*}
@@ -192,29 +192,29 @@ multi sub unrecord(Mu \key, Mu \value --> Pair:D) {
     (key) => value
 }
 
-multi method gist(::?CLASS:D: --> Str:D) {
+multi method gist(::?ROLE:D: --> Str:D) {
     %!record.gist
 }
 
-multi method raku(::?CLASS:U: --> Str:D) {
+multi method raku(::?ROLE:U: --> Str:D) {
     my Str:D $raku = '{@ ' ~ %.fields.map(*.raku).join(', ') ~ ' @}';
     my Str:D $name = self.^name;
     $raku ~= ":name('$name')" unless $name eq MetamodelX::RecordHOW::ANON_NAME;
     $raku
 }
 
-multi method ACCEPTS(::?CLASS:U: Map:D $map is raw --> Bool:D) {
+multi method ACCEPTS(::?ROLE:U: Map:D $map is raw --> Bool:D) {
     for ($map.keys ∪ %.fields.keys).keys -> Mu $key is raw {
         return False unless (%.fields{$key}:exists) && ($map{$key}:exists);
         return False unless $map{$key} ~~ %.fields{$key};
     }
     True
 }
-multi method ACCEPTS(::?CLASS:D: |args --> Bool:D) {
+multi method ACCEPTS(::?ROLE:D: |args --> Bool:D) {
     %!record.ACCEPTS: |args
 }
 
-method !field-op-for-value(::?CLASS:D: Mu $field is raw, Mu $value is raw, &op, Str:D :$operation! --> Mu) {
+method !field-op-for-value(::?ROLE:D: Mu $field is raw, Mu $value is raw, &op, Str:D :$operation! --> Mu) {
     if $field ~~ Data::Record::Instance {
         if $value ~~ Data::Record::Instance {
             if $value.DEFINITE {
@@ -245,11 +245,11 @@ method !field-op-for-value(::?CLASS:D: Mu $field is raw, Mu $value is raw, &op, 
     }
 }
 
-method EXISTS-KEY(::?CLASS:D: Mu $key is raw --> Bool:D) {
+method EXISTS-KEY(::?ROLE:D: Mu $key is raw --> Bool:D) {
     %!record{$key}:exists
 }
 
-method AT-KEY(::THIS ::?CLASS:D: Mu $key is raw --> Mu) is raw {
+method AT-KEY(::THIS ::?ROLE:D: Mu $key is raw --> Mu) is raw {
     die X::Data::Record::OutOfBounds.new(
         type => THIS,
         what => 'key',
@@ -259,7 +259,7 @@ method AT-KEY(::THIS ::?CLASS:D: Mu $key is raw --> Mu) is raw {
     %!record{$key}
 }
 
-method BIND-KEY(::THIS ::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) is raw {
+method BIND-KEY(::THIS ::?ROLE:D: Mu $key is raw, Mu $value is raw --> Mu) is raw {
     die X::Data::Record::OutOfBounds.new(
         type => THIS,
         what => 'key',
@@ -271,7 +271,7 @@ method BIND-KEY(::THIS ::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) is r
         :operation<binding>
 }
 
-method ASSIGN-KEY(::THIS ::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) is raw {
+method ASSIGN-KEY(::THIS ::?ROLE:D: Mu $key is raw, Mu $value is raw --> Mu) is raw {
     die X::Data::Record::OutOfBounds.new(
         type => THIS,
         what => 'key',
@@ -283,61 +283,61 @@ method ASSIGN-KEY(::THIS ::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) is
         :operation<assignment>
 }
 
-method DELETE-KEY(::THIS ::?CLASS:D: Mu --> Mu) {
+method DELETE-KEY(::THIS ::?ROLE:D: Mu --> Mu) {
     die X::Data::Record::Immutable.new:
         operation => 'deletion',
         type      => THIS
 }
 
-method push(::THIS ::?CLASS:D: | --> Mu) {
+method push(::THIS ::?ROLE:D: | --> Mu) {
     die X::Data::Record::Immutable.new:
         operation => 'push',
         type      => THIS
 }
 
-method pop(::THIS ::?CLASS:D: | --> Mu) {
+method pop(::THIS ::?ROLE:D: | --> Mu) {
     die X::Data::Record::Immutable.new:
         operation => 'pop',
         type      => THIS
 }
 
-method shift(::THIS ::?CLASS:D: | --> Mu) {
+method shift(::THIS ::?ROLE:D: | --> Mu) {
     die X::Data::Record::Immutable.new:
         operation => 'shift',
         type      => THIS
 }
 
-method unshift(::THIS ::?CLASS:D: | --> Mu) {
+method unshift(::THIS ::?ROLE:D: | --> Mu) {
     die X::Data::Record::Immutable.new:
         operation => 'unshift',
         type      => THIS
 }
 
-method append(::THIS ::?CLASS:D: | --> Mu) {
+method append(::THIS ::?ROLE:D: | --> Mu) {
     die X::Data::Record::Immutable.new:
         operation => 'append',
         type      => THIS
 }
 
-method prepend(::THIS ::?CLASS:D: | --> Mu) {
+method prepend(::THIS ::?ROLE:D: | --> Mu) {
     die X::Data::Record::Immutable.new:
         operation => 'prepend',
         type      => THIS
 }
 
-method iterator(::?CLASS:D: --> Mu)  { %!record.iterator }
-method is-lazy(::?CLASS:D: --> Mu)   { %!record.is-lazy }
-method list(::?CLASS:D: --> Mu)      { %!record.list }
-method elems(::?CLASS:D: --> Mu)     { %!record.elems }
-method cache(::?CLASS:D: --> Mu)     { %!record.cache }
-method eager(::?CLASS:D: --> Mu)     { %!record.eager }
-method lazy(::?CLASS:D: --> Mu)      { %!record.lazy }
-method hash(::?CLASS:D: --> Mu)      { self }
-method keys(::?CLASS:D: --> Mu)      { %!record.keys }
-method values(::?CLASS:D: --> Mu)    { %!record.values }
-method kv(::?CLASS:D: --> Mu)        { %!record.kv }
-method pairs(::?CLASS:D: --> Mu)     { %!record.pairs }
-method antipairs(::?CLASS:D: --> Mu) { %!record.antipairs }
+method iterator(::?ROLE:D: --> Mu)  { %!record.iterator }
+method is-lazy(::?ROLE:D: --> Mu)   { %!record.is-lazy }
+method list(::?ROLE:D: --> Mu)      { %!record.list }
+method elems(::?ROLE:D: --> Mu)     { %!record.elems }
+method cache(::?ROLE:D: --> Mu)     { %!record.cache }
+method eager(::?ROLE:D: --> Mu)     { %!record.eager }
+method lazy(::?ROLE:D: --> Mu)      { %!record.lazy }
+method hash(::?ROLE:D: --> Mu)      { self }
+method keys(::?ROLE:D: --> Mu)      { %!record.keys }
+method values(::?ROLE:D: --> Mu)    { %!record.values }
+method kv(::?ROLE:D: --> Mu)        { %!record.kv }
+method pairs(::?ROLE:D: --> Mu)     { %!record.pairs }
+method antipairs(::?ROLE:D: --> Mu) { %!record.antipairs }
 
 multi sub circumfix:<{@ @}>(Pair:D $pair is raw, Str:_ :$name, Bool:D :$structural = False --> Mu) is export {
     my Mu $record   := MetamodelX::RecordHOW.new_type: :$name;
