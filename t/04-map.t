@@ -146,7 +146,7 @@ subtest 'basic', {
         items => []
     ) (<>) ({@
         name  => Str:D,
-        items => Array:D[Str:D],
+        items => Array:D[Str:D]
     @} :name('NameItemsMap'));
 
     lives-ok {
