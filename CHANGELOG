@@ -9,3 +9,7 @@ v0.0.2:
 
 v0.0.3:
     - Return self from array ops in Data::Record::List.
+
+v0.0.4:
+    - Remove redundant gist method candidates from Data::Record::Map and
+      Data::Record::Tuple, which prevented the method from being called.
