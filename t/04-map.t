@@ -368,9 +368,10 @@ subtest 'structural', {
             %map<foo> := 'foo'
         }, 'can bind anything to keys in a map that are not in its fields';
 
-        dies-ok {
+        throws-like {
             %map<name>:delete
-        }, 'cannot delete keys from a map if they are in its fields';
+        }, X::Data::Record::Immutable,
+          'cannot delete keys from a map if they are in its fields';
         lives-ok {
             %map<foo>:delete
         }, 'can delete keys from a map if they are not in its fields';
