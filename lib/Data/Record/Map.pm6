@@ -192,10 +192,6 @@ multi sub unrecord(Mu \key, Mu \value --> Pair:D) {
     (key) => value
 }
 
-multi method gist(::?ROLE:D: --> Str:D) {
-    %!record.gist
-}
-
 multi method raku(::?ROLE:U: --> Str:D) {
     my Str:D $raku = '{@ ' ~ %.fields.map(*.raku).join(', ') ~ ' @}';
     my Str:D $name = self.^name;
