@@ -610,6 +610,9 @@ my role Data::Record::Map[Bool:D :$structural! where ?*]
         %!record{$key}:delete
     }
 
+    # Similar deal to non-structural maps' ArrayIterator, only now we
+    # actually do return values from .pull-one! These are to be
+    # pushed/appended by the record itself, not us.
     my role ArrayIterator does Iterator {
         has            %!record is required;
         has            %!fields is required;
