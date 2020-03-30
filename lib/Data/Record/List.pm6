@@ -172,7 +172,7 @@ multi method ACCEPTS(::?ROLE:D: |args --> Bool:D) {
     @!record.ACCEPTS: |args
 }
 
-method !op-for-value(::?ROLE:D: Mu $value is raw, &op, Str:D :$operation! --> Mu) {
+method !op-for-value(::?ROLE:D: Mu $value is raw, &op, Str:D :$operation! --> Mu) is raw {
     my Mu $field := @.fields[0];
     if $field ~~ Data::Record::Instance {
         if $value ~~ Data::Record::Instance {
@@ -204,7 +204,7 @@ method !op-for-value(::?ROLE:D: Mu $value is raw, &op, Str:D :$operation! --> Mu
     }
 }
 
-method !op-for-values(::?ROLE:D: Iterable:D $values is raw, &op, Str:D :$operation! --> Mu) {
+method !op-for-values(::?ROLE:D: Iterable:D $values is raw, &op, Str:D :$operation! --> Mu) is raw {
     op gather {
         my Mu $field := @.fields[0];
         if $field ~~ Data::Record::Instance {
@@ -274,11 +274,11 @@ multi method push(::?ROLE:D: **@values --> ::?ROLE:D) {
     self
 }
 
-method pop(::?ROLE:D: --> Mu) {
+method pop(::?ROLE:D: --> Mu) is raw {
     @!record.pop
 }
 
-method shift(::?ROLE:D: --> Mu) {
+method shift(::?ROLE:D: --> Mu) is raw {
     @!record.shift
 }
 

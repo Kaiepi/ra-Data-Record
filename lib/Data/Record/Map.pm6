@@ -210,7 +210,7 @@ multi method ACCEPTS(::?ROLE:D: |args --> Bool:D) {
     %!record.ACCEPTS: |args
 }
 
-method !field-op-for-value(::?ROLE:D: Mu $field is raw, Mu $value is raw, &op, Str:D :$operation! --> Mu) {
+method !field-op-for-value(::?ROLE:D: Mu $field is raw, Mu $value is raw, &op, Str:D :$operation! --> Mu) is raw {
     if $field ~~ Data::Record::Instance {
         if $value ~~ Data::Record::Instance {
             if $value.DEFINITE {
