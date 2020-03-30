@@ -56,13 +56,14 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
     }
 
     method wrap(::THIS ::?ROLE:_: Map:D $original is raw --> Map:D) {
-        $original.new: gather for ($original.keys ∪ %.fields.keys).keys -> Mu $key is raw {
+        my %fields := %.fields;
+        $original.new: gather for ($original.keys ∪ %fields.keys).keys -> Mu $key is raw {
             die X::Data::Record::Extraneous.new(
                 operation => 'map reification',
                 type      => THIS,
                 what      => 'key',
                 key       => $key,
-            ) unless %.fields{$key}:exists;
+            ) unless %fields{$key}:exists;
 
             die X::Data::Record::Missing.new(
                 operation => 'map reification',
@@ -71,7 +72,7 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
                 key       => $key,
             ) unless $original{$key}:exists;
 
-            my Mu $field := %.fields{$key};
+            my Mu $field := %fields{$key};
             my Mu $value := $original{$key};
             if $field ~~ Data::Record::Instance {
                 take-record $field, $key, $value;
@@ -87,8 +88,9 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
     }
 
     method consume(::THIS ::?ROLE:_: Map:D $original is raw --> Map:D) {
-        $original.new: gather for ($original.keys ∪ %.fields.keys).keys -> Mu $key is raw {
-            next unless %.fields{$key}:exists;
+        my %fields := %.fields;
+        $original.new: gather for ($original.keys ∪ %fields.keys).keys -> Mu $key is raw {
+            next unless %fields{$key}:exists;
 
             die X::Data::Record::Missing.new(
                 operation => 'map reification',
@@ -97,7 +99,7 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
                 key       => $key,
             ) unless $original{$key}:exists;
 
-            my Mu $field := %.fields{$key};
+            my Mu $field := %fields{$key};
             my Mu $value := $original{$key};
             if $field ~~ Data::Record::Instance {
                 take-record $field, $key, $value, :consume;
@@ -113,15 +115,16 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
     }
 
     method subsume(::THIS ::?ROLE:_: Map:D $original is raw --> Map:D) {
-        $original.new: gather for ($original.keys ∪ %.fields.keys).keys -> Mu $key is raw {
+        my %fields := %.fields;
+        $original.new: gather for ($original.keys ∪ %fields.keys).keys -> Mu $key is raw {
             die X::Data::Record::Extraneous.new(
                 operation => 'map reification',
                 type      => THIS,
                 what      => 'key',
                 key       => $key,
-            ) unless %.fields{$key}:exists;
+            ) unless %fields{$key}:exists;
 
-            my Mu $field := %.fields{$key};
+            my Mu $field := %fields{$key};
             if $original{$key}:exists {
                 my Mu $value := $original{$key};
                 if $field ~~ Data::Record::Instance {
@@ -147,10 +150,11 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
     }
 
     method coerce(::THIS ::?ROLE:_: Map:D $original is raw --> Map:D) {
-        $original.new: gather for ($original.keys ∪ %.fields.keys).keys -> Mu $key is raw {
-            next unless %.fields{$key}:exists;
+        my %fields := %.fields;
+        $original.new: gather for ($original.keys ∪ %fields.keys).keys -> Mu $key is raw {
+            next unless %fields{$key}:exists;
 
-            my Mu $field := %.fields{$key};
+            my Mu $field := %fields{$key};
             if $original{$key}:exists {
                 my Mu $value := $original{$key};
                 if $field ~~ Data::Record::Instance {
@@ -202,9 +206,10 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
     }
 
     multi method ACCEPTS(::?ROLE:U: Map:D $map is raw --> Bool:D) {
-        for ($map.keys ∪ %.fields.keys).keys -> Mu $key is raw {
-            return False unless (%.fields{$key}:exists) && ($map{$key}:exists);
-            return False unless $map{$key} ~~ %.fields{$key};
+        my %fields:= %.fields;
+        for ($map.keys ∪ %fields.keys).keys -> Mu $key is raw {
+            return False unless %fields{$key}:exists;
+            return False unless $map{$key}:exists && $map{$key} ~~ %.fields{$key};
         }
         True
     }
@@ -251,33 +256,37 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
         die X::Data::Record::OutOfBounds.new(
             type => THIS,
             what => 'key',
-            key  => $key
+            key  => $key,
         ) unless %.fields{$key}:exists;
 
         %!record{$key}
     }
 
     method BIND-KEY(::THIS ::?ROLE:D: Mu $key is raw, Mu $value is raw --> Mu) is raw {
+        my %fields := %.fields;
+
         die X::Data::Record::OutOfBounds.new(
             type => THIS,
             what => 'key',
-            key  => $key
-        ) unless %.fields{$key}:exists;
+            key  => $key,
+        ) unless %fields{$key}:exists;
 
         self!field-op-for-value:
-            %.fields{$key}, $value, { %!record{$key} := $value },
+            %fields{$key}, $value, { %!record{$key} := $value },
             :operation<binding>
     }
 
     method ASSIGN-KEY(::THIS ::?ROLE:D: Mu $key is raw, Mu $value is raw --> Mu) is raw {
+        my %fields := %.fields;
+
         die X::Data::Record::OutOfBounds.new(
             type => THIS,
             what => 'key',
-            key  => $key
-        ) unless %.fields{$key}:exists;
+            key  => $key,
+        ) unless %fields{$key}:exists;
 
         self!field-op-for-value:
-            %.fields{$key}, $value, { %!record{$key} = $value },
+            %fields{$key}, $value, { %!record{$key} = $value },
             :operation<assignment>
     }
 
