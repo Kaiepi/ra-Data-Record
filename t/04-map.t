@@ -385,36 +385,36 @@ subtest 'structural', {
 
         lives-ok {
             %map.push: 'items', 'ok'
-        }, 'can push to array fields in a record map using a key/value pair';
+        }, 'can push to array fields in a structural record map using a key/value pair';
         lives-ok {
             %map.push: (items => 'ok 2 electric boogaloo');
-        }, 'can push to array fields in a record map using a pair';
+        }, 'can push to array fields in a structural record map using a pair';
         throws-like {
             %map.push: 'name', 'Mrofnet'
         }, X::Data::Record::TypeCheck,
-          'cannot push to existing non-array keys in a record map using a key/value pair';
+          'cannot push to existing non-array keys in a structural record map using a key/value pair';
         throws-like {
             %map.push: (name => 'Mrofnet');
         }, X::Data::Record::TypeCheck,
-          'cannot push to existing non-array keys in a record map using a pair';
+          'cannot push to existing non-array keys in a structural record map using a pair';
         lives-ok {
             %map.push: 'foo', 'bar'
-        }, 'can push a key/value pair whose key does not exist in the record type';
+        }, 'can push a key/value pair whose key does not exist in the structural record type';
         lives-ok {
             %map.push: (foo => 'bar')
-        }, 'can push a pair whose key does not exist in the record type';
+        }, 'can push a pair whose key does not exist in the structural record type';
         %map<foo>:delete;
 
         lives-ok {
             %map.append: 'items', <wew lad>
-        }, 'can append to array fields in a record map';
+        }, 'can append to array fields in a structural record map';
         throws-like {
             %map.append: 'name', 'Mrofnet'
         }, X::Data::Record::TypeCheck,
-          'cannot append to existing keys non-array keys in a record map';
+          'cannot append to existing keys non-array keys in a structural record map';
         lives-ok {
             %map.append: 'foo', 'bar'
-        }, 'can append a value for a key that does not exist in the record type';
+        }, 'can append a value for a key that does not exist in the structural record type';
         %map<foo>:delete;
     };
 
@@ -442,7 +442,7 @@ subtest 'structural', {
 
         my Mu \NNameMap = Mu;
         lives-ok {
-            NNameMap := {@ name => {@ value => Str:D @} @} :structural :name('NNameMap');
+            NNameMap := {@ name => {@ value => Str:D @} :structural @} :structural :name('NNameMap');
         }, 'can create nested structural maps';
         cmp-ok {name => {value => 'ok'}}, &[~~], NNameMap,
           'can typecheck against nested structural maps';
@@ -453,11 +453,11 @@ subtest 'structural', {
         }, 'can instantiate nested maps with maps containing maps';
         lives-ok {
             %instance.record (><) NNameMap
-        }, 'can instantiate nested maps with maps containing records';
+        }, 'can instantiate nested maps with maps containing structural records';
         throws-like {
             %instance.fields (><) NNameMap
         }, X::Data::Record::TypeCheck,
-          'cannot instantiate nested maps with maps containing record type objects';
+          'cannot instantiate nested maps with maps containing structural record type objects';
 
         my %unrecord;
         lives-ok {
