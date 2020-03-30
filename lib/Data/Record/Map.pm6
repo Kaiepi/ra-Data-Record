@@ -305,9 +305,9 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
     # "But this never returns anything besides IterationEnd on pull? What's the
     # point of this?"
     #
-    # Hash array methods have exceptions of their own that they throw. The point of
-    # this is to ensure typechecking gets deferred until Hash's methods iterate
-    # over this so those get handled properly.
+    # Hash array methods have exceptions of their own that they can fail with.
+    # The point of this is to ensure typechecking gets deferred until Hash's
+    # methods iterate over this so those get handled properly.
     my role ArrayIterator does Iterator {
         has Mu         $!type   is required;
         has            %!record is required;
