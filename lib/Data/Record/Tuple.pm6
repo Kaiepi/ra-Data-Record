@@ -351,37 +351,40 @@ method EXISTS-POS(::?ROLE:D: Int:D $pos --> Bool:D) {
 }
 
 method AT-POS(::THIS ::?ROLE:D: Int:D $pos --> Mu) is raw {
-    die X::Data::Record::OutOfBounds.new(
-        type => THIS,
-        what => 'index',
-        key  => $pos,
-    ) unless @.fields[$pos]:exists;
-
-    @!record[$pos]
+    if @.fields[$pos]:!exists {
+        die X::Data::Record::OutOfBounds.new:
+            type => THIS,
+            what => 'index',
+            key  => $pos
+    } else {
+        @!record[$pos]
+    }
 }
 
 method BIND-POS(::THIS ::?ROLE:D: Int:D $pos, Mu $value is raw --> Mu) is raw {
-    die X::Data::Record::OutOfBounds.new(
-        type => THIS,
-        what => 'index',
-        key  => $pos,
-    ) unless @.fields[$pos]:exists;
-
-    self!field-op-for-value:
-        @.fields[$pos], $value, { @!record[$pos] := $_ },
-        :operation<binding>
+    if @.fields[$pos]:!exists {
+        die X::Data::Record::OutOfBounds.new:
+            type => THIS,
+            what => 'index',
+            key  => $pos
+    } else {
+        self!field-op-for-value:
+            @.fields[$pos], $value, { @!record[$pos] := $_ },
+            :operation<binding>
+    }
 }
 
 method ASSIGN-POS(::THIS ::?ROLE:D: Int:D $pos, Mu $value is raw --> Mu) is raw {
-    die X::Data::Record::OutOfBounds.new(
-        type => THIS,
-        what => 'index',
-        key  => $pos,
-    ) unless @.fields[$pos]:exists;
-
-    self!field-op-for-value:
-        @.fields[$pos], $value, { @!record[$pos] = $_ },
-        :operation<assignment>
+    if @.fields[$pos]:!exists {
+        die X::Data::Record::OutOfBounds.new:
+            type => THIS,
+            what => 'index',
+            key  => $pos
+    } else {
+        self!field-op-for-value:
+            @.fields[$pos], $value, { @!record[$pos] = $_ },
+            :operation<assignment>
+    }
 }
 
 method DELETE-POS(::THIS ::?ROLE:D: Int:D $pos --> Mu) is raw {
