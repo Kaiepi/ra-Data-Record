@@ -158,17 +158,17 @@ multi sub unrecord(Mu \value --> Mu) is raw {
     value
 }
 
-multi method raku(::?ROLE:U: --> Str:D) {
+multi method raku(::?CLASS:U: --> Str:D) {
     my Str:D $raku = '[@ ' ~ @.fields[0].raku ~ ' @]';
     my Str:D $name = self.^name;
     $raku ~= ":name('$name')" unless $name eq MetamodelX::RecordHOW::ANON_NAME;
     $raku
 }
 
-multi method ACCEPTS(::?ROLE:U: List:D $list is raw --> Bool:D) {
+multi method ACCEPTS(::?CLASS:U: List:D $list is raw --> Bool:D) {
     so $list.all ~~ @.fields[0]
 }
-multi method ACCEPTS(::?ROLE:D: |args --> Bool:D) {
+multi method ACCEPTS(::?CLASS:D: |args --> Bool:D) {
     @!record.ACCEPTS: |args
 }
 

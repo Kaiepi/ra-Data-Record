@@ -42,10 +42,10 @@ method record(::?ROLE:D: --> T:D)   { ... }
 #|[ Returns this record's wrapped data, recursively unwrapping any records found within it. ]
 method unrecord(::?ROLE:D: --> T:D) { ... }
 
-multi method gist(::?ROLE:D: --> Str:D) { self.record.gist }
+multi method gist(::?CLASS:D: --> Str:D) { self.record.gist }
 
-# multi method raku(::?ROLE:U: --> Str:D) { ... }
+# multi method raku(::?CLASS:U: --> Str:D) { ... }
 
-multi method ACCEPTS(::?ROLE:_: ::?ROLE:U --> True) { }
-# multi method ACCEPTS(::?ROLE:U: T:D --> Bool:D)    { ... }
-# multi method ACCEPTS(::?ROLE:D: | --> Bool:D)      { ... }
+multi method ACCEPTS(::?CLASS:_: ::?ROLE:U --> True) { }
+# multi method ACCEPTS(::?CLASS:U: T:D --> Bool:D)    { ... }
+# multi method ACCEPTS(::?CLASS:D: | --> Bool:D)      { ... }

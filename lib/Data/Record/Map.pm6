@@ -200,14 +200,14 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
         (key) => value
     }
 
-    multi method raku(::?ROLE:U: --> Str:D) {
+    multi method raku(::?CLASS:U: --> Str:D) {
         my Str:D $raku = '{@ ' ~ %.fields.map(*.raku).join(', ') ~ ' @}';
         my Str:D $name = self.^name;
         $raku ~= ":name('$name')" unless $name eq MetamodelX::RecordHOW::ANON_NAME;
         $raku
     }
 
-    multi method ACCEPTS(::?ROLE:U: Map:D $map is raw --> Bool:D) {
+    multi method ACCEPTS(::?CLASS:U: Map:D $map is raw --> Bool:D) {
         my %fields:= %.fields;
         for ($map.keys ∪ %fields.keys).keys -> Mu $key is raw {
             return False unless %fields{$key}:exists;
@@ -215,7 +215,7 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
         }
         True
     }
-    multi method ACCEPTS(::?ROLE:D: |args --> Bool:D) {
+    multi method ACCEPTS(::?CLASS:D: |args --> Bool:D) {
         %!record.ACCEPTS: |args
     }
 
@@ -539,20 +539,20 @@ my role Data::Record::Map[Bool:D :$structural! where ?*]
         (key) => value
     }
 
-    multi method raku(::?ROLE:U: --> Str:D) {
+    multi method raku(::?CLASS:U: --> Str:D) {
         my Str:D $raku = '{@ ' ~ %.fields.map(*.raku).join(', ') ~ ' @}:structural';
         my Str:D $name = self.^name;
         $raku ~= ":name('$name')" unless $name eq MetamodelX::RecordHOW::ANON_NAME;
         $raku
     }
 
-    multi method ACCEPTS(::?ROLE:U: Map:D $map is raw --> Bool:D) {
+    multi method ACCEPTS(::?CLASS:U: Map:D $map is raw --> Bool:D) {
         for %.fields.kv -> Mu $key is raw, Mu $field is raw {
             return False unless $map{$key}:exists && $map{$key} ~~ $field;
         }
         True
     }
-    multi method ACCEPTS(::?ROLE:D: |args --> Bool:D) {
+    multi method ACCEPTS(::?CLASS:D: |args --> Bool:D) {
         %!record.ACCEPTS: |args
     }
 

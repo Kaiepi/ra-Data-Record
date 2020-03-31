@@ -292,14 +292,14 @@ multi sub unrecord(Mu \value --> Mu) is raw {
     value
 }
 
-multi method raku(::?ROLE:U: --> Str:D) {
+multi method raku(::?CLASS:U: --> Str:D) {
     my Str:D $raku = '<@ ' ~ @.fields.map(*.raku).join(', ') ~ ' @>';
     my Str:D $name = self.^name;
     $raku ~= ":name('$name')" unless $name eq MetamodelX::RecordHOW::ANON_NAME;
     $raku
 }
 
-multi method ACCEPTS(::?ROLE:U: List:D $list is raw --> Bool:D) {
+multi method ACCEPTS(::?CLASS:U: List:D $list is raw --> Bool:D) {
     # $list could be lazy, so we can't just .elems it to find out if it has
     # the correct arity. Instead, ensure the index for each of our fields
     # exists in $list and typechecks, then check if any extraneous values
@@ -311,7 +311,7 @@ multi method ACCEPTS(::?ROLE:U: List:D $list is raw --> Bool:D) {
     }
     $list[$count]:!exists
 }
-multi method ACCEPTS(::?ROLE:D: |args --> Bool:D) {
+multi method ACCEPTS(::?CLASS:D: |args --> Bool:D) {
     @!record.ACCEPTS: |args
 }
 
