@@ -21,3 +21,6 @@ v0.0.6:
     - Implement push and append methods for Data::Record::Map and remove its
       pop, shift, unshift, and prepend methods in order for it to match Hash's
       API.
+
+v0.1.0:
+    - Implement structural typings for maps with Data::Record::Map.

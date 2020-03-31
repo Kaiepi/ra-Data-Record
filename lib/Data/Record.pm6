@@ -10,7 +10,7 @@ sub EXPORT(--> Map:D) {
         '&infix:<eqv>' => &infix:<eqv>,
         |Data::Record::Operators::EXPORT::DEFAULT.WHO.keys.map({ $_ => ::($_) })
 }
-unit module Data::Record:auth<github:Kaiepi>:ver<0.0.6>:api<0>;
+unit module Data::Record:auth<github:Kaiepi>:ver<0.1.0>:api<0>;
 
 constant Instance = Data::Record::Instance;
 constant Tuple    = Data::Record::Tuple;
