@@ -215,9 +215,6 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
         }
         True
     }
-    multi method ACCEPTS(::?CLASS:D: |args --> Bool:D) {
-        %!record.ACCEPTS: |args
-    }
 
     method !field-op-for-value(::?ROLE:D: Mu $field is raw, Mu $value is raw, &op, Str:D :$operation! --> Mu) is raw {
         if $field ~~ Data::Record::Instance {
@@ -551,9 +548,6 @@ my role Data::Record::Map[Bool:D :$structural! where ?*]
             return False unless $map{$key}:exists && $map{$key} ~~ $field;
         }
         True
-    }
-    multi method ACCEPTS(::?CLASS:D: |args --> Bool:D) {
-        %!record.ACCEPTS: |args
     }
 
     method !field-op-for-value(::?ROLE:D: Mu $field is raw, Mu $value is raw, &op, Str:D :$operation! --> Mu) is raw {

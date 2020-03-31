@@ -168,9 +168,6 @@ multi method raku(::?CLASS:U: --> Str:D) {
 multi method ACCEPTS(::?CLASS:U: List:D $list is raw --> Bool:D) {
     so $list.all ~~ @.fields[0]
 }
-multi method ACCEPTS(::?CLASS:D: |args --> Bool:D) {
-    @!record.ACCEPTS: |args
-}
 
 method !op-for-value(::?ROLE:D: Mu $value is raw, &op, Str:D :$operation! --> Mu) is raw {
     my Mu $field := @.fields[0];

@@ -1,7 +1,7 @@
 use v6.d;
 unit role Data::Record::Instance[::T];
 
-proto method new(::?ROLE:_: |)                                 {*}
+proto method new(::?ROLE:_: |)                               {*}
 # multi method new(::?ROLE:_: T:D)                             { ... }
 # multi method new(::?ROLE:_: T:D, Bool:D :$consume! where ?*) { ... }
 # multi method new(::?ROLE:_: T:D, Bool:D :$subsume! where ?*) { ... }
@@ -47,5 +47,5 @@ multi method gist(::?CLASS:D: --> Str:D) { self.record.gist }
 # multi method raku(::?CLASS:U: --> Str:D) { ... }
 
 multi method ACCEPTS(::?CLASS:_: ::?ROLE:U --> True) { }
-# multi method ACCEPTS(::?CLASS:U: T:D --> Bool:D)    { ... }
-# multi method ACCEPTS(::?CLASS:D: | --> Bool:D)      { ... }
+# multi method ACCEPTS(::?CLASS:U: T:D --> Bool:D)     { ... }
+multi method ACCEPTS(::?CLASS:D: |args --> Bool:D)   { self.record.ACCEPTS: |args }

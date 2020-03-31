@@ -311,9 +311,6 @@ multi method ACCEPTS(::?CLASS:U: List:D $list is raw --> Bool:D) {
     }
     $list[$count]:!exists
 }
-multi method ACCEPTS(::?CLASS:D: |args --> Bool:D) {
-    @!record.ACCEPTS: |args
-}
 
 method !field-op-for-value(::?ROLE:D: Mu $field is raw, Mu $value is raw, &op, Str:D :$operation! --> Mu) is raw {
     if $field ~~ Data::Record::Instance {
