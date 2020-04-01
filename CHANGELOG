@@ -24,3 +24,9 @@ v0.0.6:
 
 v0.1.0:
     - Implement structural typings for maps with Data::Record::Map.
+    - Fix handling of exceptions in Data::Record::Map when they are resumed.
+
+v0.1.1:
+    - Fix handling of exceptions in Data::Record::Map when they are resumed.
+    - Move delegate ::?CLASS:D ACCEPTS and raku candidates to
+      Data::Record::Instance.
