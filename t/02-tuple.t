@@ -7,7 +7,7 @@ use Test;
 plan 4;
 
 subtest 'basic', {
-    plan 43;
+    plan 45;
 
     my Mu    \IntTuple = Mu;
     my Str:D $name     = 'IntTuple';
@@ -103,6 +103,11 @@ subtest 'basic', {
 
     my @record := [1];
     my @tuple  := @record (><) IntTuple;
+    is @tuple.raku, "$name\.new(@tuple.record().raku())",
+      'tuples have the correct .raku';
+    is @tuple.gist, @tuple.record.gist,
+      'the .gist of tuples is that of their record';
+
     ok @tuple[0]:exists,
       'can check if positions exist in a tuple';
     nok @tuple[1]:exists,

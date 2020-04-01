@@ -10,7 +10,7 @@ subtest 'non-structural', {
     plan 3;
 
     subtest 'basic', {
-        plan 46;
+        plan 48;
 
         my Mu    \NameMap = Mu;
         my Str:D $name    = 'NameMap';
@@ -107,6 +107,11 @@ subtest 'non-structural', {
           '(><) throws for unacceptable maps';
 
         my %map := { name => 'Kaiepi' } (><) NameMap;
+        is %map.raku, "$name\.new(%map.record().raku())",
+          'maps have the correct .raku';
+        is %map.gist, %map.record.gist,
+          'the .gist of maps is that of their record';
+
         ok %map<name>:exists,
           'can check if keys exist in a map';
 
@@ -244,7 +249,7 @@ subtest 'structural', {
     plan 3;
 
     subtest 'basic', {
-        plan 47;
+        plan 49;
 
         my Mu    \NameMap = Mu;
         my Str:D $name    = 'NameMap';
@@ -339,6 +344,11 @@ subtest 'structural', {
           '(><) throws for unacceptable maps';
 
         my %map := { name => 'Kaiepi' } (><) NameMap;
+        is %map.raku, "$name\.new(%map.record().raku())",
+          'maps have the correct .raku';
+        is %map.gist, %map.record.gist,
+          'the .gist of maps is that of their record';
+
         ok %map<name>:exists,
           'can check if keys exist in a map';
 

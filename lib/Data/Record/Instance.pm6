@@ -45,6 +45,7 @@ method unrecord(::?ROLE:D: --> T:D) { ... }
 multi method gist(::?CLASS:D: --> Str:D) { self.record.gist }
 
 # multi method raku(::?CLASS:U: --> Str:D) { ... }
+multi method raku(::?CLASS:D: --> Str:D) { self.^name ~ '.new(' ~ self.record.raku ~ ')' }
 
 multi method ACCEPTS(::?CLASS:_: ::?ROLE:U --> True) { }
 # multi method ACCEPTS(::?CLASS:U: T:D --> Bool:D)     { ... }

@@ -7,7 +7,7 @@ use Test;
 plan 4;
 
 subtest 'basic', {
-    plan 35;
+    plan 37;
 
     my Mu    \IntList = Mu;
     my Str:D $name    = 'IntList';
@@ -63,22 +63,31 @@ subtest 'basic', {
 
     my @record := [1];
     my @list   := @record (><) IntList;
+    is @list.raku, "$name\.new(@list.record().raku())",
+      'lists have the correct .raku';
+    is @list.gist, @list.record.gist,
+      'the .gist of lists is that of their record';
+
     ok @list[0]:exists,
       'can check if positions exist in a list';
+
     cmp-ok @list[0], &[===], 1,
       'can check values for positions of a list';
+
     cmp-ok (@list[0] = 2), &[===], 2,
       'can assign to positions in a list';
     throws-like {
         @list[0] = 'ayy lmao'
     }, X::Data::Record::TypeCheck,
       'cannot assign to positions in a list if the value does not typecheck';
+
     cmp-ok (@list[0] := 3), &[===], 3,
       'can bind to positions in a list';
     throws-like {
         @list[0] := 'ayy lmao';
     }, X::Data::Record::TypeCheck,
       'cannot bind to positions in a list if the value does not typecheck';
+
     cmp-ok @list[0]:delete, &[===], 3,
       'can delete positions in a list';
 
