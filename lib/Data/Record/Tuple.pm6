@@ -35,6 +35,9 @@ multi method new(::?ROLE:_: List:D $original is raw, Bool:D :coerce($)! where ?*
     self.bless: :@record
 }
 
+# Iterator for tuples (lists of fixed length) that are to become records.
+# Classes that do this role typecheck the list's values and coerce any of them
+# that correspond to fields that are records in some manner.
 my role TupleIterator does Iterator {
     has Mu         $!type   is required;
     has Iterator:D $!fields is required;
@@ -57,6 +60,9 @@ my role TupleIterator does Iterator {
     }
 }
 
+# Wraps a list. The list must have an arity equal to the tuple type's and all
+# values must typecheck as their corresponding fields, otherwise an exception
+# will be thrown.
 my class WrappedTupleIterator does TupleIterator {
     method pull-one(::?CLASS:D: --> Mu) is raw {
         return IterationEnd if $!done;
@@ -114,6 +120,10 @@ method wrap(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
     T.from-iterator: WrappedTupleIterator.new: THIS, @.fields, $original
 }
 
+# Consumes a list. The list must have an arity greater than or equal to the
+# tuple type; if it's greater, extraneous values will be stripped. If any
+# values are missing or values corresponding to fields don't typecheck, an
+# exception will be thrown.
 my class ConsumedTupleIterator does TupleIterator {
     method pull-one(::?CLASS:D: --> Mu) is raw {
         return IterationEnd if $!done;
@@ -163,6 +173,10 @@ method consume(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
     T.from-iterator: ConsumedTupleIterator.new: THIS, @.fields, $original
 }
 
+# Subsumes a list. The list must have an arity lesser than or equal to the
+# tuple type's; if it's lesser, missing values will be stubbed (if possible).
+# If any values don't typecheck as their corresponding fields, an exception
+# will be thrown.
 my class SubsumedTupleIterator does TupleIterator {
     method pull-one(::?CLASS:D: --> Mu) is raw {
         return IterationEnd if $!done;
@@ -224,6 +238,9 @@ method subsume(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
     T.from-iterator: SubsumedTupleIterator.new: THIS, @.fields, $original
 }
 
+# Coerces a list. Arity does not matter; missing values are stubbed (if
+# possible) and extraneous values are stripped. If any values don't typecheck
+# as their corresponding fields, an exception will be thrown.
 my class CoercedTupleIterator does TupleIterator {
     method pull-one(::?CLASS:D: --> Mu) is raw {
         return IterationEnd if $!done;
@@ -312,37 +329,6 @@ multi method ACCEPTS(::?CLASS:U: List:D $list is raw --> Bool:D) {
     $list[$count]:!exists
 }
 
-method !field-op-for-value(::?ROLE:D: Mu $field is raw, Mu $value is raw, &op, Str:D :$operation! --> Mu) is raw {
-    if $field ~~ Data::Record::Instance {
-        if $value ~~ Data::Record::Instance {
-            if $value.DEFINITE {
-                op $value ~~ $field
-                ?? $value
-                !! $field.new: $value.record
-            } else {
-                die X::Data::Record::TypeCheck.new:
-                    operation => $operation,
-                    expected  => $field,
-                    got       => $value
-            }
-        } elsif $value ~~ $field.for {
-            op $field.new: $value
-        } else {
-            die X::Data::Record::TypeCheck.new:
-                operation => $operation,
-                expected  => $field,
-                got       => $value
-        }
-    } elsif $value ~~ $field {
-        op $value
-    } else {
-        die X::Data::Record::TypeCheck.new:
-            operation => $operation,
-            expected  => $field,
-            got       => $value
-    }
-}
-
 method EXISTS-POS(::?ROLE:D: Int:D $pos --> Bool:D) {
     @!record[$pos]:exists
 }
@@ -359,28 +345,30 @@ method AT-POS(::THIS ::?ROLE:D: Int:D $pos --> Mu) is raw {
 }
 
 method BIND-POS(::THIS ::?ROLE:D: Int:D $pos, Mu $value is raw --> Mu) is raw {
-    if @.fields[$pos]:!exists {
+    my @fields := @.fields;
+    if @fields[$pos]:!exists {
         die X::Data::Record::OutOfBounds.new:
             type => THIS,
             what => 'index',
             key  => $pos
     } else {
-        self!field-op-for-value:
-            @.fields[$pos], $value, { @!record[$pos] := $_ },
-            :operation<binding>
+        self!field-op: 'binding', {
+            @!record[$pos] := $_
+        }, @fields[$pos], $value
     }
 }
 
 method ASSIGN-POS(::THIS ::?ROLE:D: Int:D $pos, Mu $value is raw --> Mu) is raw {
-    if @.fields[$pos]:!exists {
+    my @fields := @.fields;
+    if @fields[$pos]:!exists {
         die X::Data::Record::OutOfBounds.new:
             type => THIS,
             what => 'index',
             key  => $pos
     } else {
-        self!field-op-for-value:
-            @.fields[$pos], $value, { @!record[$pos] = $_ },
-            :operation<assignment>
+        self!field-op: 'assignment', {
+           @!record[$pos] = $_
+        }, @fields[$pos], $value
     }
 }
 
@@ -445,6 +433,37 @@ method values(::?ROLE:D: --> Mu)    { @!record.values }
 method kv(::?ROLE:D: --> Mu)        { @!record.kv }
 method pairs(::?ROLE:D: --> Mu)     { @!record.pairs }
 method antipairs(::?ROLE:D: --> Mu) { @!record.antipairs }
+
+method !field-op(::?ROLE:D: Str:D $operation, &op is raw, Mu $field is raw, Mu $value is raw --> Mu) is raw {
+    if $field ~~ Data::Record::Instance {
+        if $value ~~ Data::Record::Instance {
+            if $value.DEFINITE {
+                op $value ~~ $field
+                ?? $value
+                !! $field.new: $value.record
+            } else {
+                die X::Data::Record::TypeCheck.new:
+                    operation => $operation,
+                    expected  => $field,
+                    got       => $value
+            }
+        } elsif $value ~~ $field.for {
+            op $field.new: $value
+        } else {
+            die X::Data::Record::TypeCheck.new:
+                operation => $operation,
+                expected  => $field,
+                got       => $value
+        }
+    } elsif $value ~~ $field {
+        op $value
+    } else {
+        die X::Data::Record::TypeCheck.new:
+            operation => $operation,
+            expected  => $field,
+            got       => $value
+    }
+}
 
 multi sub circumfix:«<@ @>»(+values, Str:_ :$name --> Mu) is export {
     my Mu $record = MetamodelX::RecordHOW.new_type: :$name;
