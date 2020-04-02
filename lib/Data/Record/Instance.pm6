@@ -1,4 +1,5 @@
 use v6.d;
+use Data::Record::Exceptions;
 unit role Data::Record::Instance[::T];
 
 proto method new(::?ROLE:_: |)                               {*}
@@ -37,7 +38,7 @@ method for(::?ROLE:_: --> Mu) { T }
 #|[ The fields of this record. ]
 method fields(::?ROLE:_: --> T:D) { ... }
 
-#|[ Returns this record's wrapped data as-is. ]
+#|[ Returns this record's wrapped data as is. ]
 method record(::?ROLE:D: --> T:D)   { ... }
 #|[ Returns this record's wrapped data, recursively unwrapping any records found within it. ]
 method unrecord(::?ROLE:D: --> T:D) { ... }
@@ -50,3 +51,37 @@ multi method raku(::?CLASS:D: --> Str:D) { self.^name ~ '.new(' ~ self.record.ra
 multi method ACCEPTS(::?CLASS:_: ::?ROLE:U --> True) { }
 # multi method ACCEPTS(::?CLASS:U: T:D --> Bool:D)     { ... }
 multi method ACCEPTS(::?CLASS:D: |args --> Bool:D)   { self.record.ACCEPTS: |args }
+
+#|[ Handles an operation on a field of the record given a callback accepting a
+    value to perform the operation with. Typechecking and coercion of data
+    structures to records is handled before passing the value to the callback. ]
+method !field-op(::?ROLE:D: Str:D $operation, &op is raw, Mu $field is raw, Mu $value is raw --> Mu) is raw {
+    if $field ~~ Data::Record::Instance {
+        if $value ~~ Data::Record::Instance {
+            if $value.DEFINITE {
+                op $value ~~ $field
+                ?? $value
+                !! $field.new: $value.record
+            } else {
+                die X::Data::Record::TypeCheck.new:
+                    operation => $operation,
+                    expected  => $field,
+                    got       => $value
+            }
+        } elsif $value ~~ $field.for {
+            op $field.new: $value
+        } else {
+            die X::Data::Record::TypeCheck.new:
+                operation => $operation,
+                expected  => $field,
+                got       => $value
+        }
+    } elsif $value ~~ $field {
+        op $value
+    } else {
+        die X::Data::Record::TypeCheck.new:
+            operation => $operation,
+            expected  => $field,
+            got       => $value
+    }
+}

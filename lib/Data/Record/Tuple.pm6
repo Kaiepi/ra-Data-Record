@@ -434,37 +434,6 @@ method kv(::?ROLE:D: --> Mu)        { @!record.kv }
 method pairs(::?ROLE:D: --> Mu)     { @!record.pairs }
 method antipairs(::?ROLE:D: --> Mu) { @!record.antipairs }
 
-method !field-op(::?ROLE:D: Str:D $operation, &op is raw, Mu $field is raw, Mu $value is raw --> Mu) is raw {
-    if $field ~~ Data::Record::Instance {
-        if $value ~~ Data::Record::Instance {
-            if $value.DEFINITE {
-                op $value ~~ $field
-                ?? $value
-                !! $field.new: $value.record
-            } else {
-                die X::Data::Record::TypeCheck.new:
-                    operation => $operation,
-                    expected  => $field,
-                    got       => $value
-            }
-        } elsif $value ~~ $field.for {
-            op $field.new: $value
-        } else {
-            die X::Data::Record::TypeCheck.new:
-                operation => $operation,
-                expected  => $field,
-                got       => $value
-        }
-    } elsif $value ~~ $field {
-        op $value
-    } else {
-        die X::Data::Record::TypeCheck.new:
-            operation => $operation,
-            expected  => $field,
-            got       => $value
-    }
-}
-
 multi sub circumfix:«<@ @>»(+values, Str:_ :$name --> Mu) is export {
     my Mu $record = MetamodelX::RecordHOW.new_type: :$name;
     $record.^set_language_version;

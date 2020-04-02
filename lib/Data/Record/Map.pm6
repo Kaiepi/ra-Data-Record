@@ -216,37 +216,6 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
         True
     }
 
-    method !field-op-for-value(::?ROLE:D: Mu $field is raw, Mu $value is raw, &op, Str:D :$operation! --> Mu) is raw {
-        if $field ~~ Data::Record::Instance {
-            if $value ~~ Data::Record::Instance {
-                if $value.DEFINITE {
-                    op $value ~~ $field
-                    ?? $value
-                    !! $field.new: $value.record
-                } else {
-                    die X::Data::Record::TypeCheck.new:
-                        operation => $operation,
-                        expected  => $field,
-                        got       => $value
-                }
-            } elsif $value ~~ $field.for {
-                op $field.new: $value
-            } else {
-                die X::Data::Record::TypeCheck.new:
-                    operation => $operation,
-                    expected  => $field,
-                    got       => $value
-            }
-        } elsif $value ~~ $field {
-            op $value
-        } else {
-            die X::Data::Record::TypeCheck.new:
-                operation => $operation,
-                expected  => $field,
-                got       => $value
-        }
-    }
-
     method EXISTS-KEY(::?ROLE:D: Mu $key is raw --> Bool:D) {
         %!record{$key}:exists
     }
@@ -270,9 +239,9 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
                 what => 'key',
                 key  => $key
         } else {
-            self!field-op-for-value:
-                %fields{$key}, $value, { %!record{$key} := $value },
-                :operation<binding>
+            self!field-op: 'binding', {
+                %!record{$key} := $_
+            }, %fields{$key}, $value
         }
     }
 
@@ -284,9 +253,9 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
                 what => 'key',
                 key  => $key
         } else {
-            self!field-op-for-value:
-                %fields{$key}, $value, { %!record{$key} = $value },
-                :operation<assignment>
+            self!field-op: 'assignment', {
+                %!record{$key} = $_
+            }, %fields{$key}, $value
         }
     }
 
@@ -550,37 +519,6 @@ my role Data::Record::Map[Bool:D :$structural! where ?*]
         True
     }
 
-    method !field-op-for-value(::?ROLE:D: Mu $field is raw, Mu $value is raw, &op, Str:D :$operation! --> Mu) is raw {
-        if $field ~~ Data::Record::Instance {
-            if $value ~~ Data::Record::Instance {
-                if $value.DEFINITE {
-                    op $value ~~ $field
-                    ?? $value
-                    !! $field.new: $value.record
-                } else {
-                    die X::Data::Record::TypeCheck.new:
-                        operation => $operation,
-                        expected  => $field,
-                        got       => $value
-                }
-            } elsif $value ~~ $field.for {
-                op $field.new: $value
-            } else {
-                die X::Data::Record::TypeCheck.new:
-                    operation => $operation,
-                    expected  => $field,
-                    got       => $value
-            }
-        } elsif $value ~~ $field {
-            op $value
-        } else {
-            die X::Data::Record::TypeCheck.new:
-                operation => $operation,
-                expected  => $field,
-                got       => $value
-        }
-    }
-
     method EXISTS-KEY(::?ROLE:D: Mu $key is raw --> Bool:D) {
         %!record{$key}:exists
     }
@@ -592,9 +530,9 @@ my role Data::Record::Map[Bool:D :$structural! where ?*]
     method BIND-KEY(::THIS ::?ROLE:D: Mu $key is raw, Mu $value is raw --> Mu) is raw {
         my %fields := %.fields;
         if %fields{$key}:exists {
-            self!field-op-for-value:
-                %fields{$key}, $value, { %!record{$key} := $value },
-                :operation<binding>
+            self!field-op: 'binding', {
+                %!record{$key} := $_
+            }, %fields{$key}, $value
         } else {
             %!record{$key} := $value
         }
@@ -603,9 +541,9 @@ my role Data::Record::Map[Bool:D :$structural! where ?*]
     method ASSIGN-KEY(::THIS ::?ROLE:D: Mu $key is raw, Mu $value is raw --> Mu) is raw {
         my %fields := %.fields;
         if %fields{$key}:exists {
-            self!field-op-for-value:
-                %.fields{$key}, $value, { %!record{$key} = $value },
-                :operation<assignment>
+            self!field-op: 'assignment', {
+                %!record{$key} = $_
+            }, %fields{$key}, $value
         } else {
             %!record{$key} = $value
         }
