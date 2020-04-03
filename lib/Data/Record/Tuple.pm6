@@ -78,13 +78,15 @@ my class WrappedTupleIterator does TupleIterator {
                 operation => 'tuple reification',
                 type      => $!type,
                 what      => 'index',
-                key       => $!idx
+                key       => $!idx,
+                value     => $value
         } elsif $value =:= IterationEnd {
             die X::Data::Record::Missing.new:
                 operation => 'tuple reification',
                 type      => $!type,
                 what      => 'index',
-                key       => $!idx
+                key       => $!idx,
+                field     => $field
         } elsif $field ~~ Data::Record::Instance {
             if $value ~~ Data::Record::Instance {
                 if $value.DEFINITE {
@@ -139,7 +141,8 @@ my class ConsumedTupleIterator does TupleIterator {
                 operation => 'tuple reification',
                 type      => $!type,
                 what      => 'index',
-                key       => $!idx
+                key       => $!idx,
+                field     => $field
         } elsif $field ~~ Data::Record::Instance {
             if $value ~~ Data::Record::Instance {
                 if $value.DEFINITE {
@@ -202,7 +205,8 @@ my class SubsumedTupleIterator does TupleIterator {
                 operation => 'tuple reification',
                 type      => $!type,
                 what      => 'index',
-                key       => $!idx
+                key       => $!idx,
+                value     => $value
         } elsif $field ~~ Data::Record::Instance {
             if $value ~~ Data::Record::Instance {
                 if $value.DEFINITE {

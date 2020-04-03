@@ -70,6 +70,7 @@ my role ListIterator does Iterator {
 # thus an exception will be thrown.
 my class WrapListIterator does ListIterator {
     method pull-one(::?CLASS:D: --> Mu) is raw {
+        my Mu $field := $!fields.pull-one;
         my Mu $value := $!values.pull-one;
         if $value =:= IterationEnd {
             die X::Data::Record::Missing.new(
@@ -77,11 +78,12 @@ my class WrapListIterator does ListIterator {
                 type      => $!type,
                 what      => 'index',
                 key       => $!count % $!arity,
+                field     => $field
             ) unless $!count %% $!arity;
             IterationEnd
         } else {
             $!count++;
-            if (my Mu $field := $!fields.pull-one) ~~ Data::Record::Instance {
+            if $field ~~ Data::Record::Instance {
                 if $value ~~ Data::Record::Instance {
                     if $value.DEFINITE {
                         $value ~~ $field
@@ -139,6 +141,7 @@ my class ConsumeListIterator does ListIterator {
                 type      => $!type,
                 what      => 'index',
                 key       => $!count % $!arity,
+                field     => $field,
             ) unless $!count %% $!arity;
             IterationEnd
         } else {
@@ -397,7 +400,8 @@ multi method push(::THIS ::?ROLE:D: Mu $value is raw --> ::?ROLE:D) {
             operation => 'push',
             type      => THIS,
             what      => 'index',
-            key       => 1;
+            key       => 1,
+            field     => @fields[1];
         self
     }
 }
@@ -411,23 +415,27 @@ method pop(::THIS ::?ROLE:D: --> Mu) is raw {
     if +@fields == 1 {
         @!record.pop
     } else {
+        my Int:D $idx = +@fields - 1;
         die X::Data::Record::Missing.new:
             operation => 'pop',
             type      => THIS,
             what      => 'index',
-            key       => +@fields - 1;
+            key       => $idx,
+            field     => @fields[$idx]
     }
 }
 
 method shift(::THIS ::?ROLE:D: --> Mu) is raw {
-    if +@.fields == 1 {
+    my @fields := @.fields;
+    if +@fields == 1 {
         @!record.shift
     } else {
         die X::Data::Record::Missing.new:
             operation => 'shift',
             type      => THIS,
             what      => 'index',
-            key       => 0;
+            key       => 0,
+            field     => @fields[0]
     }
 }
 
@@ -440,11 +448,13 @@ multi method unshift(::THIS ::?ROLE:D: $value is raw --> ::?ROLE:D) {
            self
         }, @fields[0], $value
     } else {
+        my Int:D $idx = +@fields - 2;
         die X::Data::Record::Missing.new:
             operation => 'unshift',
             type      => THIS,
             what      => 'index',
-            key       => +@fields - 2;
+            key       => $idx,
+            field     => @fields[$idx];
         self
     }
 }

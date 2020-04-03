@@ -63,13 +63,15 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
                     operation => 'map reification',
                     type      => THIS,
                     what      => 'key',
-                    key       => $key
+                    key       => $key,
+                    value     => $original{$key};
             } elsif $original{$key}:!exists {
                 die X::Data::Record::Missing.new:
                     operation => 'map reification',
                     type      => THIS,
                     what      => 'key',
-                    key       => $key
+                    key       => $key,
+                    field     => %fields{$key};
             } else {
                 my Mu $field := %fields{$key};
                 my Mu $value := $original{$key};
@@ -97,7 +99,8 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
                     operation => 'map reification',
                     type      => THIS,
                     what      => 'key',
-                    key       => $key
+                    key       => $key,
+                    field     => %fields{$key};
             } else {
                 my Mu $field := %fields{$key};
                 my Mu $value := $original{$key};
@@ -123,7 +126,8 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
                     operation => 'map reification',
                     type      => THIS,
                     what      => 'key',
-                    key       => $key
+                    key       => $key,
+                    value     => $original{$key};
             } else {
                 my Mu $field := %fields{$key};
                 if $original{$key}:exists {
@@ -429,7 +433,8 @@ my role Data::Record::Map[Bool:D :$structural! where ?*]
                     operation => 'map reification',
                     type      => THIS,
                     what      => 'key',
-                    key       => $key;
+                    key       => $key,
+                    field     => %fields{$key};
             }
         }
     }
@@ -554,7 +559,7 @@ my role Data::Record::Map[Bool:D :$structural! where ?*]
             # XXX: Not quite the right exception
             die X::Data::Record::Immutable.new:
                 operation => 'deletion',
-                what      => THIS
+                type      => THIS
         } else {
             %!record{$key}:delete
         }
