@@ -55,13 +55,21 @@ multi method ACCEPTS(::?CLASS:D: |args --> Bool:D)   { self.record.ACCEPTS: |arg
 #|[ Handles an operation on a field of the record given a callback accepting a
     value to perform the operation with. Typechecking and coercion of data
     structures to records is handled before passing the value to the callback. ]
-method !field-op(::?ROLE:D: Str:D $operation, &op is raw, Mu $field is raw, Mu $value is raw --> Mu) is raw {
+method !field-op(
+    ::?ROLE:_:
+    Str:D  $operation,
+           &op         is raw,
+    Mu     $field      is raw,
+    Mu     $value      is raw,
+          *%named-args
+    --> Mu
+) is raw {
     if $field ~~ Data::Record::Instance {
         if $value ~~ Data::Record::Instance {
             if $value.DEFINITE {
                 op $value ~~ $field
                 ?? $value
-                !! $field.new: $value.record
+                !! $field.new: $value.record, |%named-args
             } else {
                 die X::Data::Record::TypeCheck.new:
                     operation => $operation,
@@ -69,7 +77,7 @@ method !field-op(::?ROLE:D: Str:D $operation, &op is raw, Mu $field is raw, Mu $
                     got       => $value
             }
         } elsif $value ~~ $field.for {
-            op $field.new: $value
+            op $field.new: $value, |%named-args
         } else {
             die X::Data::Record::TypeCheck.new:
                 operation => $operation,

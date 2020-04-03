@@ -4,29 +4,6 @@ use Data::Record::Exceptions;
 use MetamodelX::RecordHOW;
 use MetamodelX::RecordTemplateHOW;
 
-# Helper sub used in map coercions.
-sub take-record(Mu $field is raw, Mu $key is raw, Mu $value is raw, *%named-args --> Nil) {
-    if $value ~~ Data::Record::Instance {
-        if $value.DEFINITE {
-            take-rw ($key => $value ~~ $field
-                          ?? $value
-                          !! $field.new: $value.record, |%named-args);
-        } else {
-            die X::Data::Record::TypeCheck.new:
-                operation => 'map reification',
-                expected  => $field,
-                got       => $value;
-        }
-    } elsif $value ~~ $field.for {
-        take-rw ($key => $field.new: $value, |%named-args);
-    } else {
-        die X::Data::Record::TypeCheck.new:
-            operation => 'map reification',
-            expected  => $field,
-            got       => $value;
-    }
-}
-
 my role Data::Record::Map[Bool:D :$structural! where !*]
    does Data::Record::Instance[Map]
    does Iterable
@@ -73,18 +50,9 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
                     key       => $key,
                     field     => %fields{$key};
             } else {
-                my Mu $field := %fields{$key};
-                my Mu $value := $original{$key};
-                if $field ~~ Data::Record::Instance {
-                    take-record $field, $key, $value;
-                } elsif $value ~~ $field {
-                    take-rw ($key => $value);
-                } else {
-                    die X::Data::Record::TypeCheck.new:
-                        operation => 'map reification',
-                        expected  => $field,
-                        got       => $value;
-                }
+                self!field-op: 'map reification', {
+                    take-rw $key => $_
+                }, %fields{$key}, $original{$key};
             }
         }
     }
@@ -93,7 +61,6 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
         my %fields := %.fields;
         $original.new: gather for ($original.keys ∪ %fields.keys).keys -> Mu $key is raw {
             next unless %fields{$key}:exists;
-
             if $original{$key}:!exists {
                 die X::Data::Record::Missing.new:
                     operation => 'map reification',
@@ -102,18 +69,9 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
                     key       => $key,
                     field     => %fields{$key};
             } else {
-                my Mu $field := %fields{$key};
-                my Mu $value := $original{$key};
-                if $field ~~ Data::Record::Instance {
-                    take-record $field, $key, $value, :consume;
-                } elsif $value ~~ $field {
-                    take-rw ($key => $value);
-                } else {
-                    die X::Data::Record::TypeCheck.new:
-                        operation => 'map reification',
-                        expected  => $field,
-                        got       => $value;
-                }
+                self!field-op: 'map reification', {
+                    take-rw ($key => $_)
+                }, %fields{$key}, $original{$key}, :consume;
             }
         }
     }
@@ -132,16 +90,9 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
                 my Mu $field := %fields{$key};
                 if $original{$key}:exists {
                     my Mu $value := $original{$key};
-                    if $field ~~ Data::Record::Instance {
-                        take-record $field, $key, $value, :subsume;
-                    } elsif $value ~~ $field {
-                        take-rw ($key => $value);
-                    } else {
-                        die X::Data::Record::TypeCheck.new:
-                            operation => 'map reification',
-                            expected  => $field,
-                            got       => $value;
-                    }
+                    self!field-op: 'map reification', {
+                        take-rw ($key => $_)
+                    }, $field, $value, :subsume;
                 } elsif $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
                     die X::Data::Record::Definite.new:
                         type  => THIS,
@@ -163,16 +114,9 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
             my Mu $field := %fields{$key};
             if $original{$key}:exists {
                 my Mu $value := $original{$key};
-                if $field ~~ Data::Record::Instance {
-                    take-record $field, $key, $value, :coerce;
-                } elsif $value ~~ $field {
-                    take-rw ($key => $value);
-                } else {
-                    die X::Data::Record::TypeCheck.new:
-                        operation => 'map reification',
-                        expected  => $field,
-                        got       => $value;
-                }
+                self!field-op: 'map reification', {
+                    take-rw ($key => $_)
+                }, $field, $value, :coerce;
             } elsif $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
                 die X::Data::Record::Definite.new:
                     type  => THIS,
@@ -412,21 +356,13 @@ my role Data::Record::Map[Bool:D :$structural! where ?*]
         $original.new: gather for ($original.keys ∪ %fields.keys).keys -> Mu $key is raw {
             if $original{$key}:exists {
                 my Mu $value := $original{$key};
-                unless %fields{$key}:exists {
-                    take-rw ($key => $value);
-                    next;
-                }
-
-                my Mu $field := %fields{$key};
-                if $field ~~ Data::Record::Instance {
-                    take-record $field, $key, $value, |%named-args;
-                } elsif $value ~~ $field {
-                    take-rw ($key => $value);
+                if %fields{$key}:exists {
+                    my Mu $field := %fields{$key};
+                    self!field-op: 'map reification', {
+                        take-rw ($key => $_)
+                    }, $field, $value, |%named-args;
                 } else {
-                    die X::Data::Record::TypeCheck.new:
-                        operation => 'map reification',
-                        expected  => $field,
-                        got       => $value;
+                    take-rw ($key => $value);
                 }
             } else {
                 die X::Data::Record::Missing.new:
@@ -452,21 +388,13 @@ my role Data::Record::Map[Bool:D :$structural! where ?*]
         $original.new: gather for ($original.keys ∪ %fields.keys).keys -> Mu $key is raw {
             if $original{$key}:exists {
                 my Mu $value := $original{$key};
-                unless %fields{$key}:exists {
-                    take-rw ($key => $value);
-                    next;
-                }
-
-                my Mu $field := %fields{$key};
-                if $field ~~ Data::Record::Instance {
-                    take-record $field, $key, $value, |%named-args;
-                } elsif $value ~~ $field {
-                    take-rw ($key => $value);
+                if %fields{$key}:exists {
+                    my Mu $field := %fields{$key};
+                    self!field-op: 'map reification', {
+                        take-rw ($key => $_)
+                    }, $field, $value, |%named-args;
                 } else {
-                    die X::Data::Record::TypeCheck.new:
-                        operation => 'structural map reification',
-                        expected  => $field,
-                        got       => $value;
+                    take-rw ($key => $value);
                 }
             } else {
                 my Mu $field := %fields{$key};
