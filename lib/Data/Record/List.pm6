@@ -93,7 +93,7 @@ my class WrapListIterator does ListIterator {
                         die X::Data::Record::TypeCheck.new:
                             operation => $!operation,
                             expected  => $field,
-                            got       => $value;
+                            got       => $value
                     }
                 } elsif $value ~~ $field.for {
                     $field.new: $value, |%!named-args
@@ -109,7 +109,7 @@ my class WrapListIterator does ListIterator {
                 die X::Data::Record::TypeCheck.new:
                     operation => $!operation,
                     expected  => $field,
-                    got       => $value;
+                    got       => $value
             }
         }
     }
@@ -126,8 +126,8 @@ method wrap(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
 my class ConsumeListIterator does ListIterator {
     method pull-one(::?CLASS:D: --> Mu) is raw {
         my Mu     $field     := $!fields.pull-one;
-        my Bool:D $is-record  = $field ~~ Data::Record::Instance;
         my Mu     $value;
+        my Bool:D $is-record  = $field ~~ Data::Record::Instance;
         my Bool:D $ended      = False;
         my Bool:D $matches    = False;
         repeat {
@@ -192,7 +192,7 @@ my class SubsumeListIterator does ListIterator {
                         type  => $!type,
                         what  => 'index',
                         key   => $!count,
-                        value => $field;
+                        value => $field
                 } else {
                     $field
                 }
@@ -209,7 +209,7 @@ my class SubsumeListIterator does ListIterator {
                         die X::Data::Record::TypeCheck.new:
                             operation => $!operation,
                             expected  => $field,
-                            got       => $value;
+                            got       => $value
                     }
                 } elsif $value ~~ $field.for {
                     $field.new: $value, |%!named-args
@@ -225,7 +225,7 @@ my class SubsumeListIterator does ListIterator {
                 die X::Data::Record::TypeCheck.new:
                     operation => $!operation,
                     expected  => $field,
-                    got       => $value;
+                    got       => $value
             }
         }
     }
@@ -261,7 +261,7 @@ my class CoerceListIterator does ListIterator {
                         type  => $!type,
                         what  => 'index',
                         key   => $!count,
-                        value => $field;
+                        value => $field
                 } else {
                     $field
                 }
