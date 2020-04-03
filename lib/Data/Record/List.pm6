@@ -349,7 +349,10 @@ method ASSIGN-POS(::?ROLE:D: Int:D $pos, Mu $value is raw --> Mu) is raw {
 }
 
 method DELETE-POS(::?ROLE:D: Int:D $pos --> Mu) is raw is default {
-    # XXX FIXME: This needs to be typechecked!
+    # XXX: This should be typechecking for the definiteness of the field
+    # this position corresponds to and ensuring that, if this will leave
+    # an empty space in the record, the field is not definite; however,
+    # array slices complicate things.
     @!record[$pos]:delete
 }
 
