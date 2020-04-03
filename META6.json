@@ -23,6 +23,6 @@
   "source-url" : "https://github.com/Kaiepi/ra-Data-Record.git",
   "tags" : [ "data", "type", "record" ],
   "test-depends" : [ ],
-  "version" : "0.1.2",
+  "version" : "0.1.3",
   "auth" : "github:Kaiepi"
 }
