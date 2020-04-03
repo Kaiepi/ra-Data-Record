@@ -19,7 +19,7 @@ my class X::Data::Record::Missing is Exception does X::Data::Record::Arity {
         $!field := $field;
     }
     method message(::?CLASS:D: --> Str:D) {
-        "Missing required field at $!what '$!key.gist()' ($!field.gist()) during $!operation for record of type $!type.^name()"
+        "Missing required field at $!what '$!key.gist()' ($!field.raku()) during $!operation for record of type $!type.^name()"
     }
 }
 
@@ -29,7 +29,7 @@ my class X::Data::Record::Extraneous is Exception does X::Data::Record::Arity {
         $!value := $value;
     }
     method message(::?CLASS:D: --> Str:D) {
-        "Forbidden extraneous value at $!what '$!key.gist()' ($!value.gist()) found during $!operation for record of type $!type.^name()"
+        "Forbidden extraneous value at $!what '$!key.gist()' ($!value.raku()) found during $!operation for record of type $!type.^name()"
     }
 }
 
