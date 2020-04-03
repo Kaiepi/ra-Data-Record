@@ -64,9 +64,11 @@ my role ListIterator does Iterator {
     }
 }
 
-# This coerces lists to records with strict typechecking. If a value in the
-# given list cannot typecheck, an exception will be thrown.
-my class StrictListIterator does ListIterator {
+# This wraps a list with a record. If any value in the given list cannot
+# typecheck, an exception will be thrown; if the arity of the list does not
+# match that of the record, it will be considered to have missing fields and
+# thus an exception will be thrown.
+my class WrapListIterator does ListIterator {
     method pull-one(::?CLASS:D: --> Mu) is raw {
         my Mu $value := $!values.pull-one;
         if $value =:= IterationEnd {
@@ -111,9 +113,130 @@ my class StrictListIterator does ListIterator {
     }
 }
 
-# This coerces lists to records with lax typechecking. If a value in the given
-# list cannot typecheck, it will be stripped from the list.
-my class LaxListIterator does ListIterator {
+method wrap(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
+    T.from-iterator: WrapListIterator.new: 'list reification', THIS, @.fields, $original
+}
+
+# This consumes a list with a record. Any fields that do not typecheck will be
+# stripped from the list, but if the arity of the list does not match that of
+# the record, it will be considered to have missing fields and thus an
+# exception will be thrown.
+my class ConsumeListIterator does ListIterator {
+    method pull-one(::?CLASS:D: --> Mu) is raw {
+        my Mu     $field     := $!fields.pull-one;
+        my Bool:D $is-record  = $field ~~ Data::Record::Instance;
+        my Mu     $value;
+        my Bool:D $ended      = False;
+        my Bool:D $matches    = False;
+        repeat {
+           $value   := $!values.pull-one;
+           $ended    = $value =:= IterationEnd;
+           $matches  = !$ended && !$is-record && $value ~~ $field;
+        } until $ended || $matches;
+        if $ended {
+            die X::Data::Record::Missing.new(
+                operation => $!operation,
+                type      => $!type,
+                what      => 'index',
+                key       => $!count % $!arity,
+            ) unless $!count %% $!arity;
+            IterationEnd
+        } else {
+            KEEP $!count++;
+            if $is-record {
+                if $value ~~ Data::Record::Instance {
+                    if $value.DEFINITE {
+                        $value ~~ $field
+                            ?? $value
+                            !! $field.new: $value.record, |%!named-args
+                    } else {
+                        self.pull-one
+                    }
+                } elsif $value ~~ $field.for {
+                    CATCH { default { return self.pull-one } }
+                    $field.new: $value, |%!named-args
+                } else {
+                    self.pull-one
+                }
+            } elsif $matches {
+                $value
+            } else {
+                self.pull-one
+            }
+        }
+    }
+}
+
+method consume(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
+    T.from-iterator: ConsumeListIterator.new: 'list reification', THIS, @.fields, $original, :consume
+}
+
+# This subsumes a list with a record. If any fields are missing from the list,
+# they will be stubbed (if possible), but if any fields do not typecheck, then
+# an exception will be thrown. Note that it's impossible for extraneous fields
+# to exist in a list.
+my class SubsumeListIterator does ListIterator {
+    method pull-one(::?CLASS:D: --> Mu) is raw {
+        my Mu $field := $!fields.pull-one;
+        my Mu $value := $!values.pull-one;
+        if $value =:= IterationEnd {
+            if $!count %% $!arity {
+                IterationEnd
+            } else {
+                $!count++;
+                if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
+                    die X::Data::Record::Definite.new:
+                        type  => $!type,
+                        what  => 'index',
+                        key   => $!count,
+                        value => $field;
+                } else {
+                    $field
+                }
+            }
+        } else {
+            $!count++;
+            if $field ~~ Data::Record::Instance {
+                if $value ~~ Data::Record::Instance {
+                    if $value.DEFINITE {
+                        $value ~~ $field
+                            ?? $value
+                            !! $field.new: $value.record, |%!named-args
+                    } else {
+                        die X::Data::Record::TypeCheck.new:
+                            operation => $!operation,
+                            expected  => $field,
+                            got       => $value;
+                    }
+                } elsif $value ~~ $field.for {
+                    $field.new: $value, |%!named-args
+                } else {
+                    die X::Data::Record::TypeCheck.new:
+                        operation => $!operation,
+                        expected  => $field,
+                        got       => $value
+                }
+            } elsif $value ~~ $field {
+                $value
+            } else {
+                die X::Data::Record::TypeCheck.new:
+                    operation => $!operation,
+                    expected  => $field,
+                    got       => $value;
+            }
+        }
+    }
+}
+
+method subsume(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
+    T.from-iterator: SubsumeListIterator.new: 'list reification', THIS, @.fields, $original, :subsume
+}
+
+# This coerces a list to a record. If any values in the given list cannot
+# typecheck, they will be stripped from the list; if any fields are missing
+# from the given list, they will be stubbed (if possible). This should only
+# throw if a definite field is missing.
+my class CoerceListIterator does ListIterator {
     method pull-one(::?CLASS:D: --> Mu) is raw {
         my Mu     $field     := $!fields.pull-one;
         my Bool:D $is-record  = $field ~~ Data::Record::Instance;
@@ -166,20 +289,8 @@ my class LaxListIterator does ListIterator {
     }
 }
 
-method wrap(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
-    T.from-iterator: StrictListIterator.new: 'list reification', THIS, @.fields, $original
-}
-
-method consume(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
-    T.from-iterator: LaxListIterator.new: 'list reification', THIS, @.fields, $original, :consume
-}
-
-method subsume(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
-    T.from-iterator: StrictListIterator.new: 'list reification', THIS, @.fields, $original, :subsume
-}
-
 method coerce(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
-    T.from-iterator: LaxListIterator.new: 'list reification', THIS, @.fields, $original, :coerce
+    T.from-iterator: CoerceListIterator.new: 'list reification', THIS, @.fields, $original, :coerce
 }
 
 method fields(::?ROLE:_: --> List:D) { self.^fields }
@@ -243,7 +354,7 @@ method DELETE-POS(::?ROLE:D: Int:D $pos --> Mu) is raw is default {
 }
 
 # Iterator for array ops taking lists of values (push/unshift/append/prepend).
-# This is mostly identical to StrictListIterator, but adds behaviour to handle
+# This is mostly identical to WrapListIterator, but adds behaviour to handle
 # checking the arity of the list, which is handled in such a way as to support
 # lazy lists.
 #
@@ -253,7 +364,7 @@ method DELETE-POS(::?ROLE:D: Int:D $pos --> Mu) is raw is default {
 # whenever this iterator's values get pushed onto the relevant iterator of our
 # record, so we have some way to check the list's arity without using the elems
 # method.
-my class ArrayIterator is StrictListIterator {
+my class ArrayIterator is WrapListIterator {
     method push-all(::?CLASS:D: \target --> IterationEnd) {
         my IterationBuffer:D \buffer .= new;
         loop {

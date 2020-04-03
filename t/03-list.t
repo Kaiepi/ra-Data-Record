@@ -7,7 +7,7 @@ use Test;
 plan 4;
 
 subtest 'basic', {
-    plan 50;
+    plan 51;
 
     my Mu    \IntList = Mu;
     my Str:D $name    = 'IntList';
@@ -149,13 +149,16 @@ subtest 'basic', {
 
     my @stream;
     throws-like {
-        @stream := [1] (<<) IntStrList
+        [1] (>>) IntStrList
     }, X::Data::Record::Definite,
-      'consuming or coercing with a multi-field list type throws for definite fields that do not typecheck';
+      'subsuming or coercing a list with the wrong arity for a multi-field list type throws for missing, definite fields...';
+    lives-ok {
+        [1] (>>) [@ Int:D, Str:_ @]
+    }, '...but lives for any other type of missing field';
     throws-like {
-        @stream := [1] (><) IntStrList
+        [1] (<<) IntStrList
     }, X::Data::Record::Missing,
-      'wrapping a list with the wrong arity for a multi-field list type throws';
+      'wrapping or consuming a list with the wrong arity for a multi-field list type throws for missing fields';
     lives-ok {
         @stream := [1,'a'] (><) IntStrList
     }, 'can wrap a list with the correct arity for a multi-field list type';
@@ -247,7 +250,7 @@ subtest 'nested', {
 };
 
 subtest 'lazy', {
-    plan 3;
+    plan 4;
 
     my Mu        \IntList    = [@ Int:D @] :name('IntList');
     my Promise:D $reified   .= new;
@@ -256,11 +259,15 @@ subtest 'lazy', {
         @instance := (lazy gather {
             $reified.keep;
             take 1;
-        }).list (><) IntList;
-    }, 'can create lazy lists...';
+        }).Array (><) IntList;
+    }, 'can create lazy arrays...';
     nok $reified, '...which are not reified...';
     @instance[0];
     ok $reified, '...until they should be';
+    throws-like {
+        @instance.push: 2
+    }, X::Cannot::Lazy,
+      'pushing to lazy arrays does not throw until Array decides it should';
 };
 
 # vim: ft=perl6 sw=4 ts=4 sts=4 et
