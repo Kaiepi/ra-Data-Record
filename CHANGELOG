@@ -38,3 +38,9 @@ v0.1.3:
     - Make Data::Record::List array ops 25% faster.
     - Introduce Data::Record::Instance!field-op, which handles an operation on
       a field of a record for all record types.
+
+v0.2.0:
+    - Implement support for multi-field lists. This allows flat, repeated lists
+      to be typed.
+    - Arity exception messages now include the missing field or extraneous
+      value in question.
