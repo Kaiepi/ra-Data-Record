@@ -144,28 +144,32 @@ my class ConsumeListIterator does ListIterator {
                 field     => $field,
             ) unless $!count %% $!arity;
             IterationEnd
-        } else {
-            KEEP $!count++;
-            if $is-record {
-                if $value ~~ Data::Record::Instance {
-                    if $value.DEFINITE {
-                        $value ~~ $field
-                            ?? $value
-                            !! $field.new: $value.record, |%!named-args
+        } elsif $is-record {
+            if $value ~~ Data::Record::Instance {
+                if $value.DEFINITE {
+                    if $value ~~ $field {
+                        $!count++;
+                        $value
                     } else {
-                        self.pull-one
+                        CATCH { default { return self.pull-one } }
+                        KEEP  $!count++;
+                        $field.new: $value.record, |%!named-args
                     }
-                } elsif $value ~~ $field.for {
-                    CATCH { default { return self.pull-one } }
-                    $field.new: $value, |%!named-args
                 } else {
                     self.pull-one
                 }
-            } elsif $matches {
-                $value
+            } elsif $value ~~ $field.for {
+                CATCH { default { return self.pull-one } }
+                KEEP  $!count++;
+                $field.new: $value, |%!named-args
             } else {
                 self.pull-one
             }
+        } elsif $matches {
+            $!count++;
+            $value
+        } else {
+            self.pull-one
         }
     }
 }
@@ -266,28 +270,32 @@ my class CoerceListIterator does ListIterator {
                     $field
                 }
             }
-        } else {
-            KEEP $!count++;
-            if $is-record {
-                if $value ~~ Data::Record::Instance {
-                    if $value.DEFINITE {
-                        $value ~~ $field
-                            ?? $value
-                            !! $field.new: $value.record, |%!named-args
+        } elsif $is-record {
+            if $value ~~ Data::Record::Instance {
+                if $value.DEFINITE {
+                    if $value ~~ $field {
+                        $!count++;
+                        $value
                     } else {
-                        self.pull-one
+                        CATCH { default { return self.pull-one } }
+                        KEEP  $!count++;
+                        $field.new: $value.record, |%!named-args
                     }
-                } elsif $value ~~ $field.for {
-                    CATCH { default { return self.pull-one } }
-                    $field.new: $value, |%!named-args
                 } else {
                     self.pull-one
                 }
-            } elsif $matches {
-                $value
+            } elsif $value ~~ $field.for {
+                CATCH { default { return self.pull-one } }
+                KEEP  $!count++;
+                $field.new: $value, |%!named-args
             } else {
                 self.pull-one
             }
+        } elsif $matches {
+            $!count++;
+            $value
+        } else {
+            self.pull-one
         }
     }
 }
