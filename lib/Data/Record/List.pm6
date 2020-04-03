@@ -153,6 +153,8 @@ my class ConsumeListIterator does ListIterator {
                 $!count++;
             } elsif $value ~~ $field {
                 $!count++;
+            } else {
+                next;
             }
             return $value;
         }
@@ -263,6 +265,8 @@ my class CoerceListIterator does ListIterator {
                 $!count++;
             } elsif $value ~~ $field {
                 $!count++;
+            } else {
+                next;
             }
             return $value;
         }
