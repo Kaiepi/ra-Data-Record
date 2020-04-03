@@ -39,20 +39,24 @@ multi method new(::?ROLE:_: List:D $original is raw, Bool:D :coerce($)! where ?*
 # typecheck the list's values and coerce any of them that correspond to fields
 # that are records in some manner.
 my role ListIterator does Iterator {
-    has Str:D      $!operation  is required;
-    has Mu         $!field      is required;
-    has Bool:D     $!is-record  is required;
+    has Str:D $.operation is required;
+    has Mu    $.type      is required;
+    has Int:D $.arity     is required;
+    has Int:D $.count     = 0;
+
+    has Iterator:D $!fields     is required;
     has Iterator:D $!values     is required;
     has Mu         %!named-args is required;
 
-    submethod BUILD(::?CLASS:D: Str:D :$!operation, Mu :$field! is raw, Iterable:D :$values!, :%!named-args! --> Nil) {
-        $!field     := $field;
-        $!is-record  = $field ~~ Data::Record::Instance;
-        $!values    := $values.iterator;
+    submethod BUILD(::?CLASS:D: Str:D :$!operation!, Mu :$type! is raw, :@fields!, Iterable:D :$values!, :%!named-args! --> Nil) {
+        $!type   := $type;
+        $!fields := (|@fields xx *).iterator;
+        $!values := $values.iterator;
+        $!arity  := @fields.elems;
     }
 
-    method new(::?CLASS:_: Str:D $operation, Mu $field is raw, Iterable:D $values, *%named-args --> ::?ROLE:D) {
-        self.bless: :$operation, :$field, :$values, :%named-args
+    method new(::?CLASS:_: Str:D $operation, $type is raw, @fields, Iterable:D $values, *%named-args --> ::?ROLE:D) {
+        self.bless: :$operation, :$type, :@fields, :$values, :%named-args
     }
 
     method is-lazy(::?CLASS:D: --> Bool:D) {
@@ -66,34 +70,43 @@ my class StrictListIterator does ListIterator {
     method pull-one(::?CLASS:D: --> Mu) is raw {
         my Mu $value := $!values.pull-one;
         if $value =:= IterationEnd {
+            die X::Data::Record::Missing.new(
+                operation => $!operation,
+                type      => $!type,
+                what      => 'index',
+                key       => $!count % $!arity,
+            ) unless $!count %% $!arity;
             IterationEnd
-        } elsif $!is-record {
-            if $value ~~ Data::Record::Instance {
-                if $value.DEFINITE {
-                    $value ~~ $!field
-                        ?? $value
-                        !! $!field.new: $value.record, |%!named-args
+        } else {
+            $!count++;
+            if (my Mu $field := $!fields.pull-one) ~~ Data::Record::Instance {
+                if $value ~~ Data::Record::Instance {
+                    if $value.DEFINITE {
+                        $value ~~ $field
+                            ?? $value
+                            !! $field.new: $value.record, |%!named-args
+                    } else {
+                        die X::Data::Record::TypeCheck.new:
+                            operation => $!operation,
+                            expected  => $field,
+                            got       => $value;
+                    }
+                } elsif $value ~~ $field.for {
+                    $field.new: $value, |%!named-args
                 } else {
                     die X::Data::Record::TypeCheck.new:
                         operation => $!operation,
-                        expected  => $!field,
-                        got       => $value;
+                        expected  => $field,
+                        got       => $value
                 }
-            } elsif $value ~~ $!field.for {
-                $!field.new: $value, |%!named-args
+            } elsif $value ~~ $field {
+                $value
             } else {
                 die X::Data::Record::TypeCheck.new:
                     operation => $!operation,
-                    expected  => $!field,
-                    got       => $value
+                    expected  => $field,
+                    got       => $value;
             }
-        } elsif $value ~~ $!field {
-            $value
-        } else {
-            die X::Data::Record::TypeCheck.new:
-                operation => $!operation,
-                expected  => $!field,
-                got       => $value;
         }
     }
 }
@@ -102,53 +115,69 @@ my class StrictListIterator does ListIterator {
 # list cannot typecheck, it will be stripped from the list.
 my class LaxListIterator does ListIterator {
     method pull-one(::?CLASS:D: --> Mu) is raw {
+        my Mu     $field     := $!fields.pull-one;
+        my Bool:D $is-record  = $field ~~ Data::Record::Instance;
         my Mu     $value;
-        my Bool:D $ended   = False;
-        my Bool:D $matches = False;
+        my Bool:D $ended      = False;
+        my Bool:D $matches    = False;
         repeat {
            $value   := $!values.pull-one;
            $ended    = $value =:= IterationEnd;
-           $matches  = !$ended && !$!is-record && $value ~~ $!field;
+           $matches  = !$ended && !$is-record && $value ~~ $field;
         } until $ended || $matches;
         if $ended {
-            IterationEnd
-        } elsif $!is-record {
-            if $value ~~ Data::Record::Instance {
-                if $value.DEFINITE {
-                    $value ~~ $!field
-                        ?? $value
-                        !! $!field.new: $value.record, |%!named-args
+            if $!count %% $!arity {
+                IterationEnd
+            } elsif $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
+                die X::Data::Record::Definite.new:
+                    type  => $!type,
+                    what  => 'index',
+                    key   => $!count,
+                    value => $field;
+            } else {
+                $!count++;
+                $field
+            }
+        } else {
+            KEEP $!count++;
+            if $is-record {
+                if $value ~~ Data::Record::Instance {
+                    if $value.DEFINITE {
+                        $value ~~ $field
+                            ?? $value
+                            !! $field.new: $value.record, |%!named-args
+                    } else {
+                        self.pull-one
+                    }
+                } elsif $value ~~ $field.for {
+                    CATCH { default { return self.pull-one } }
+                    $field.new: $value, |%!named-args
                 } else {
                     self.pull-one
                 }
-            } elsif $value ~~ $!field.for {
-                CATCH { default { return self.pull-one } }
-                $!field.new: $value, |%!named-args
+            } elsif $matches {
+                $value
             } else {
                 self.pull-one
             }
-        } elsif $matches {
-            $value
-        } else {
-            self.pull-one
         }
     }
 }
 
-method wrap(::?ROLE:_: ::T List:D $original is raw --> List:D) {
-    T.from-iterator: StrictListIterator.new: 'list reification', @.fields[0], $original
+method wrap(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
+    T.from-iterator: StrictListIterator.new: 'list reification', THIS, @.fields, $original
 }
 
-method consume(::?ROLE:_: ::T List:D $original is raw --> List:D) {
-    T.from-iterator: LaxListIterator.new: 'list reification', @.fields[0], $original, :consume
+method consume(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
+    T.from-iterator: LaxListIterator.new: 'list reification', THIS, @.fields, $original, :consume
 }
 
-method subsume(::?ROLE:_: ::T List:D $original is raw --> List:D) {
-    T.from-iterator: StrictListIterator.new: 'list reification', @.fields[0], $original, :subsume
+method subsume(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
+    T.from-iterator: StrictListIterator.new: 'list reification', THIS, @.fields, $original, :subsume
 }
 
-method coerce(::?ROLE:_: ::T List:D $original is raw --> List:D) {
-    T.from-iterator: LaxListIterator.new: 'list reification', @.fields[0], $original, :coerce
+method coerce(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
+    T.from-iterator: LaxListIterator.new: 'list reification', THIS, @.fields, $original, :coerce
 }
 
 method fields(::?ROLE:_: --> List:D) { self.^fields }
@@ -174,7 +203,14 @@ multi method raku(::?CLASS:U: --> Str:D) {
 }
 
 multi method ACCEPTS(::?CLASS:U: List:D $list is raw --> Bool:D) {
-    so $list.all ~~ @.fields[0]
+    my @fields := @.fields;
+    for (|@fields xx *) Z $list -> (Mu $field is raw, Mu $value is raw) {
+        state Int:D $count = 0;
+        NEXT $count++;
+        LAST return False unless $count %% +@fields;
+        return False unless $value ~~ $field;
+    }
+    True
 }
 
 method EXISTS-POS(::?ROLE:D: Int:D $pos --> Bool:D) {
@@ -186,70 +222,137 @@ method AT-POS(::?ROLE:D: Int:D $pos --> Mu) is raw {
 }
 
 method BIND-POS(::?ROLE:D: Int:D $pos, Mu $value is raw --> Mu) is raw {
+    my @fields := @.fields;
     self!field-op: 'binding', {
         @!record[$pos] := $_
-    }, @.fields[0], $value
+    }, @fields[$pos % +@fields], $value
 }
 
 method ASSIGN-POS(::?ROLE:D: Int:D $pos, Mu $value is raw --> Mu) is raw {
+    my @fields := @.fields;
     self!field-op: 'assignment', {
         @!record[$pos] = $_
-    }, @.fields[0], $value
+    }, @fields[$pos % +@fields], $value
 }
 
 method DELETE-POS(::?ROLE:D: Int:D $pos --> Mu) is raw is default {
+    # XXX FIXME: This needs to be typechecked!
     @!record[$pos]:delete
 }
 
-proto method push(|) {*}
-multi method push(::?ROLE:D: Mu $value is raw --> ::?ROLE:D) {
-    self!field-op: 'push', {
-        @!record.push: $_;
-        self
-    }, @.fields[0], $value;
+# Iterator for array ops taking lists of values (push/unshift/append/prepend).
+# This is mostly identical to StrictListIterator, but adds behaviour to handle
+# checking the arity of the list, which is handled in such a way as to support
+# lazy lists.
+#
+# Array ops can get passed lazy lists, though Array does not support this. We
+# can't throw X::Cannot::Lazy ourselves; what if someone defines their own List
+# subtype with methods that support them? Instead, we can check the arity
+# whenever this iterator's values get pushed onto the relevant iterator of our
+# record, so we have some way to check the list's arity without using the elems
+# method.
+my class ArrayIterator is StrictListIterator {
+    method push-all(::?CLASS:D: \target --> IterationEnd) {
+        my IterationBuffer:D \buffer .= new;
+        loop {
+            if (my Mu $result := self.pull-one) =:= IterationEnd {
+                my Int:D $count = $.count;
+                my Int:D $arity = $.arity;
+                last if $count %% $arity;
+                return IterationEnd;
+            } else {
+                buffer.push: $result;
+            }
+        }
+        target.append: buffer;
+    }
 }
-multi method push(::?ROLE:D: **@values --> ::?ROLE:D) {
-    @!record.push: Slip.from-iterator: StrictListIterator.new: 'push', @.fields[0], @values;
+
+proto method push(|) {*}
+multi method push(::THIS ::?ROLE:D: Mu $value is raw --> ::?ROLE:D) {
+    if +@.fields == 1 {
+        self!field-op: 'push', {
+            @!record.push: $_;
+            self
+        }, @.fields[0], $value;
+    } else {
+        die X::Data::Record::Missing.new:
+            operation => 'push',
+            type      => THIS,
+            what      => 'index',
+            key       => 1;
+        self
+    }
+}
+multi method push(::THIS ::?ROLE:D: **@values --> ::?ROLE:D) {
+    @!record.push: Slip.from-iterator: ArrayIterator.new: 'push', THIS, @.fields, @values;
     self
 }
 
-method pop(::?ROLE:D: --> Mu) is raw {
-    @!record.pop
+method pop(::THIS ::?ROLE:D: --> Mu) is raw {
+    my @fields := @.fields;
+    if +@fields == 1 {
+        @!record.pop
+    } else {
+        die X::Data::Record::Missing.new:
+            operation => 'pop',
+            type      => THIS,
+            what      => 'index',
+            key       => +@fields - 1;
+    }
 }
 
-method shift(::?ROLE:D: --> Mu) is raw {
-    @!record.shift
+method shift(::THIS ::?ROLE:D: --> Mu) is raw {
+    if +@.fields == 1 {
+        @!record.shift
+    } else {
+        die X::Data::Record::Missing.new:
+            operation => 'shift',
+            type      => THIS,
+            what      => 'index',
+            key       => 0;
+    }
 }
 
 proto method unshift(|) {*}
-multi method unshift(::?ROLE:D: $value is raw --> ::?ROLE:D) {
-    self!field-op: 'unshift', {
-       @!record.unshift: $_;
-       self
-    }, @.fields[0], $value
+multi method unshift(::THIS ::?ROLE:D: $value is raw --> ::?ROLE:D) {
+    my @fields := @.fields;
+    if +@fields == 1 {
+        self!field-op: 'unshift', {
+           @!record.unshift: $_;
+           self
+        }, @fields[0], $value
+    } else {
+        die X::Data::Record::Missing.new:
+            operation => 'unshift',
+            type      => THIS,
+            what      => 'index',
+            key       => +@fields - 2;
+        self
+    }
 }
-multi method unshift(::?ROLE:D: **@values --> ::?ROLE:D) {
-    @!record.unshift: Slip.from-iterator: StrictListIterator.new: 'unshift', @.fields[0], @values;
+multi method unshift(::THIS ::?ROLE:D: **@values --> ::?ROLE:D) {
+    @!record.unshift: Slip.from-iterator: ArrayIterator.new: 'unshift', THIS, @.fields, @values;
     self
 }
 
 proto method prepend(|) {*}
-multi method prepend(::?ROLE:D: Iterable:D $values is raw --> ::?ROLE:D) {
-    @!record.prepend: Seq.new: StrictListIterator.new: 'prepend', @.fields[0], $values;
+multi method prepend(::THIS ::?ROLE:D: Iterable:D $values is raw --> ::?ROLE:D) {
+    @!record.prepend: Seq.new: ArrayIterator.new: 'prepend', THIS, @.fields, $values;
     self
 }
-multi method prepend(::?ROLE:D: **@values --> ::?ROLE:D) {
-    @!record.prepend: Slip.from-iterator: StrictListIterator.new: 'prepend', @.fields[0], @values;
+multi method prepend(::THIS ::?ROLE:D: **@values --> ::?ROLE:D) {
+    @!record.prepend: Slip.from-iterator: ArrayIterator.new: 'prepend', THIS, @.fields, @values;
     self
 }
 
 proto method append(|) {*}
-multi method append(::?ROLE:D: Iterable:D $values is raw --> ::?ROLE:D) {
-    @!record.append: Seq.new: StrictListIterator.new: 'append', @.fields[0], $values;
+multi method append(::THIS ::?ROLE:D: Iterable:D $values is raw --> ::?ROLE:D) {
+    @!record.append: Seq.new: ArrayIterator.new: 'append', THIS, @.fields, $values;
     self
 }
-multi method append(::?ROLE:D: **@values --> ::?ROLE:D) {
-    @!record.append: Slip.from-iterator: StrictListIterator.new: 'append', @.fields[0], @values;
+multi method append(::THIS ::?ROLE:D: **@values --> ::?ROLE:D) {
+    @!record.append: Slip.from-iterator: ArrayIterator.new: 'append', THIS, @.fields, @values;
     self
 }
 
@@ -274,7 +377,6 @@ method pairs(::?ROLE:D: --> Mu)     { @!record.pairs }
 method antipairs(::?ROLE:D: --> Mu) { @!record.antipairs }
 
 multi sub circumfix:<[@ @]>(+values, Str:_ :$name --> Mu) is export {
-    die 'Multi-parameter record lists NYI' if +values > 1;
     my Mu $record := MetamodelX::RecordHOW.new_type: :$name;
     $record.^set_language_version;
     $record.^set_delegate: Data::Record::List;

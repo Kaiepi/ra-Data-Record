@@ -7,7 +7,7 @@ use Test;
 plan 4;
 
 subtest 'basic', {
-    plan 37;
+    plan 50;
 
     my Mu    \IntList = Mu;
     my Str:D $name    = 'IntList';
@@ -138,6 +138,61 @@ subtest 'basic', {
     @list.append: 4, 5, 6;
     cmp-ok @list, &[eqv], [1, 2, 3, 4, 5, 6],
       'can append values to a list';
+
+    my Mu \IntStrList = Nil;
+    lives-ok {
+        IntStrList := [@ Int:D, Str:D @] :name('IntStrList');
+    }, 'can create multi-field record list types';
+
+    nok (1,'a',2) ~~ IntStrList,
+      'cannot typecheck lists with the wrong arity for a multi-field list type';
+
+    my @stream;
+    throws-like {
+        @stream := [1] (<<) IntStrList
+    }, X::Data::Record::Definite,
+      'consuming or coercing with a multi-field list type throws for definite fields that do not typecheck';
+    throws-like {
+        @stream := [1] (><) IntStrList
+    }, X::Data::Record::Missing,
+      'wrapping a list with the wrong arity for a multi-field list type throws';
+    lives-ok {
+        @stream := [1,'a'] (><) IntStrList
+    }, 'can wrap a list with the correct arity for a multi-field list type';
+
+    throws-like {
+        @stream.push: 2
+    }, X::Data::Record::Missing,
+      'pushing one field to a multi-field list throws';
+    throws-like {
+        @stream.push: 2, 'b', 3
+    }, X::Data::Record::Missing,
+      'pushing fields with the wrong arity for a multi-field list throws';
+    lives-ok {
+        @stream.push: 2, 'b'
+    }, 'can push fields with the correct arity for a multi-field list';
+
+    throws-like {
+        @stream.pop
+    }, X::Data::Record::Missing,
+      'cannot pop a multi-field list';
+
+    throws-like {
+        @stream.shift
+    }, X::Data::Record::Missing,
+      'cannot shift a multi-field list';
+
+    throws-like {
+        @stream.unshift: 0
+    }, X::Data::Record::Missing,
+      'unshifting one field to a multi-field list throws';
+    throws-like {
+        @stream.unshift: 0, 'z', 1
+    }, X::Data::Record::Missing,
+      'unshifting fields with the wrong arity for a multi-field list throws';
+    lives-ok {
+        @stream.unshift: 0, 'z'
+    }, 'can unshift fields with the correct arity for a multi-field list';
 };
 
 subtest 'generic', {
