@@ -160,19 +160,19 @@ subtest 'basic', {
     }, X::Data::Record::Missing,
       'wrapping or consuming a list with the wrong arity for a multi-field list type throws for missing fields';
     lives-ok {
-        @stream := [1,'a'] (><) IntStrList
+        @stream := [1,'2'] (><) IntStrList
     }, 'can wrap a list with the correct arity for a multi-field list type';
 
     throws-like {
-        @stream.push: 2
+        @stream.push: 3
     }, X::Data::Record::Missing,
       'pushing one field to a multi-field list throws';
     throws-like {
-        @stream.push: 2, 'b', 3
+        @stream.push: 3, '4', 5
     }, X::Data::Record::Missing,
       'pushing fields with the wrong arity for a multi-field list throws';
     lives-ok {
-        @stream.push: 2, 'b'
+        @stream.push: 3, '4'
     }, 'can push fields with the correct arity for a multi-field list';
 
     throws-like {
@@ -190,11 +190,11 @@ subtest 'basic', {
     }, X::Data::Record::Missing,
       'unshifting one field to a multi-field list throws';
     throws-like {
-        @stream.unshift: 0, 'z', 1
+        @stream.unshift: -2, '1', 0
     }, X::Data::Record::Missing,
       'unshifting fields with the wrong arity for a multi-field list throws';
     lives-ok {
-        @stream.unshift: 0, 'z'
+        @stream.unshift: -1, '0'
     }, 'can unshift fields with the correct arity for a multi-field list';
 };
 
