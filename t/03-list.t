@@ -166,36 +166,36 @@ subtest 'basic', {
     throws-like {
         @stream.push: 3
     }, X::Data::Record::Missing,
-      'pushing one field to a multi-field list throws';
+      'pushing one value to a multi-field list throws';
     throws-like {
         @stream.push: 3, '4', 5
     }, X::Data::Record::Missing,
-      'pushing fields with the wrong arity for a multi-field list throws';
+      'pushing valuess with the wrong arity for a multi-field list throws';
     lives-ok {
         @stream.push: 3, '4'
-    }, 'can push fields with the correct arity for a multi-field list';
+    }, 'can push valuess with the correct arity for a multi-field list';
 
     throws-like {
         @stream.pop
     }, X::Data::Record::Missing,
-      'cannot pop a multi-field list';
+      'cannot pop from a multi-field list';
 
     throws-like {
         @stream.shift
     }, X::Data::Record::Missing,
-      'cannot shift a multi-field list';
+      'cannot shift from a multi-field list';
 
     throws-like {
         @stream.unshift: 0
     }, X::Data::Record::Missing,
-      'unshifting one field to a multi-field list throws';
+      'unshifting one value to a multi-field list throws';
     throws-like {
         @stream.unshift: -2, '1', 0
     }, X::Data::Record::Missing,
-      'unshifting fields with the wrong arity for a multi-field list throws';
+      'unshifting values with the wrong arity for a multi-field list throws';
     lives-ok {
         @stream.unshift: -1, '0'
-    }, 'can unshift fields with the correct arity for a multi-field list';
+    }, 'can unshift values with the correct arity for a multi-field list';
 };
 
 subtest 'generic', {
