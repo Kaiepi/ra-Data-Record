@@ -7,7 +7,7 @@ use Test;
 plan 4;
 
 subtest 'basic', {
-    plan 51;
+    plan 55;
 
     my Mu    \IntList = Mu;
     my Str:D $name    = 'IntList';
@@ -196,6 +196,22 @@ subtest 'basic', {
     lives-ok {
         @stream.unshift: -1, '0'
     }, 'can unshift values with the correct arity for a multi-field list';
+
+    throws-like {
+        @stream.append: (5, '6', 7)
+    }, X::Data::Record::Missing,
+      'cannot append values with the wrong arity for a multi-field list';
+    lives-ok {
+        @stream.append: (5, '6')
+    }, 'can append values with the correct arity for a multi-field list';
+
+    throws-like {
+        @stream.prepend: (-4, '-3', -2)
+    }, X::Data::Record::Missing,
+      'cannot prepend values with the wrong arity for a multi-field list';
+    lives-ok {
+        @stream.prepend: (-3, '-2')
+    }, 'can prepend values with the correct arity for a multi-field list';
 };
 
 subtest 'generic', {
