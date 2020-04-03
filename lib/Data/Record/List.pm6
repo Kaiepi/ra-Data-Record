@@ -128,15 +128,17 @@ my class LaxListIterator does ListIterator {
         if $ended {
             if $!count %% $!arity {
                 IterationEnd
-            } elsif $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
-                die X::Data::Record::Definite.new:
-                    type  => $!type,
-                    what  => 'index',
-                    key   => $!count,
-                    value => $field;
             } else {
                 $!count++;
-                $field
+                if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
+                    die X::Data::Record::Definite.new:
+                        type  => $!type,
+                        what  => 'index',
+                        key   => $!count,
+                        value => $field;
+                } else {
+                    $field
+                }
             }
         } else {
             KEEP $!count++;
@@ -270,11 +272,12 @@ my class ArrayIterator is StrictListIterator {
 
 proto method push(|) {*}
 multi method push(::THIS ::?ROLE:D: Mu $value is raw --> ::?ROLE:D) {
-    if +@.fields == 1 {
+    my @fields := @.fields;
+    if +@fields == 1 {
         self!field-op: 'push', {
             @!record.push: $_;
             self
-        }, @.fields[0], $value;
+        }, @fields[0], $value;
     } else {
         die X::Data::Record::Missing.new:
             operation => 'push',
