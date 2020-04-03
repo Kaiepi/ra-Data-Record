@@ -126,50 +126,35 @@ method wrap(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
 my class ConsumeListIterator does ListIterator {
     method pull-one(::?CLASS:D: --> Mu) is raw {
         my Mu     $field     := $!fields.pull-one;
-        my Mu     $value;
         my Bool:D $is-record  = $field ~~ Data::Record::Instance;
-        my Bool:D $ended      = False;
-        my Bool:D $matches    = False;
-        repeat {
-           $value   := $!values.pull-one;
-           $ended    = $value =:= IterationEnd;
-           $matches  = !$ended && !$is-record && $value ~~ $field;
-        } until $ended || $matches;
-        if $ended {
-            die X::Data::Record::Missing.new(
-                operation => $!operation,
-                type      => $!type,
-                what      => 'index',
-                key       => $!count % $!arity,
-                field     => $field,
-            ) unless $!count %% $!arity;
-            IterationEnd
-        } elsif $is-record {
-            if $value ~~ Data::Record::Instance {
-                if $value.DEFINITE {
-                    if $value ~~ $field {
-                        $!count++;
-                        $value
-                    } else {
-                        CATCH { default { return self.pull-one } }
-                        KEEP  $!count++;
-                        $field.new: $value.record, |%!named-args
+        loop {
+           if (my Mu $value := $!values.pull-one) =:= IterationEnd {
+                die X::Data::Record::Missing.new(
+                    operation => $!operation,
+                    type      => $!type,
+                    what      => 'index',
+                    key       => $!count % $!arity,
+                    field     => $field,
+                ) unless $!count %% $!arity;
+            } elsif $is-record {
+                if $value ~~ Data::Record::Instance {
+                    if $value !~~ $field {
+                        if $value.DEFINITE {
+                            CATCH { default { next } }
+                            $value := $field.new: $value.record, |%!named-args;
+                        } else {
+                            next;
+                        }
                     }
-                } else {
-                    self.pull-one
+                } elsif $value ~~ $field.for {
+                    CATCH { default { next } }
+                    $value := $field.new: $value, |%!named-args;
                 }
-            } elsif $value ~~ $field.for {
-                CATCH { default { return self.pull-one } }
-                KEEP  $!count++;
-                $field.new: $value, |%!named-args
-            } else {
-                self.pull-one
+                $!count++;
+            } elsif $value ~~ $field {
+                $!count++;
             }
-        } elsif $matches {
-            $!count++;
-            $value
-        } else {
-            self.pull-one
+            return $value;
         }
     }
 }
@@ -247,55 +232,39 @@ my class CoerceListIterator does ListIterator {
     method pull-one(::?CLASS:D: --> Mu) is raw {
         my Mu     $field     := $!fields.pull-one;
         my Bool:D $is-record  = $field ~~ Data::Record::Instance;
-        my Mu     $value;
-        my Bool:D $ended      = False;
-        my Bool:D $matches    = False;
-        repeat {
-           $value   := $!values.pull-one;
-           $ended    = $value =:= IterationEnd;
-           $matches  = !$ended && !$is-record && $value ~~ $field;
-        } until $ended || $matches;
-        if $ended {
-            if $!count %% $!arity {
-                IterationEnd
-            } else {
-                $!count++;
-                if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
-                    die X::Data::Record::Definite.new:
-                        type  => $!type,
-                        what  => 'index',
-                        key   => $!count,
-                        value => $field
-                } else {
-                    $field
-                }
-            }
-        } elsif $is-record {
-            if $value ~~ Data::Record::Instance {
-                if $value.DEFINITE {
-                    if $value ~~ $field {
-                        $!count++;
-                        $value
+        loop {
+           if (my Mu $value := $!values.pull-one) =:= IterationEnd {
+                if $!count !%% $!arity {
+                    $!count++;
+                    if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
+                        die X::Data::Record::Definite.new:
+                            type  => $!type,
+                            what  => 'index',
+                            key   => $!count,
+                            value => $field;
                     } else {
-                        CATCH { default { return self.pull-one } }
-                        KEEP  $!count++;
-                        $field.new: $value.record, |%!named-args
+                        $value := $field;
                     }
-                } else {
-                    self.pull-one
                 }
-            } elsif $value ~~ $field.for {
-                CATCH { default { return self.pull-one } }
-                KEEP  $!count++;
-                $field.new: $value, |%!named-args
-            } else {
-                self.pull-one
+            } elsif $is-record {
+                if $value ~~ Data::Record::Instance {
+                    if $value !~~ $field {
+                        if $value.DEFINITE {
+                            CATCH { default { next } }
+                            $value := $field.new: $value.record, |%!named-args;
+                        } else {
+                            next;
+                        }
+                    }
+                } elsif $value ~~ $field.for {
+                    CATCH { default { next } }
+                    $value := $field.new: $value, |%!named-args;
+                }
+                $!count++;
+            } elsif $value ~~ $field {
+                $!count++;
             }
-        } elsif $matches {
-            $!count++;
-            $value
-        } else {
-            self.pull-one
+            return $value;
         }
     }
 }
