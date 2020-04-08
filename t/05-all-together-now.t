@@ -38,7 +38,7 @@ subtest 'exports', {
 };
 
 subtest 'records', {
-    plan 9;
+    plan 10;
 
     my constant Schema = {@
         name  => Str:D,
@@ -71,6 +71,8 @@ subtest 'records', {
       'record coercions smartmatch against their types';
     cmp-ok Schema, &[~~], %coerced,
       'record types smartmatch against their coercions';
+    cmp-ok Schema.fields.<items>, &[!~~], %coerced,
+      'other record types do not smartmatch against record type coercions';
     cmp-ok %data, &[eqv], %coerced,
       'data are equivalent to their record coercions';
     cmp-ok %coerced, &[eqv], %data,

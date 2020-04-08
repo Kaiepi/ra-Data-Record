@@ -48,9 +48,9 @@ multi method gist(::?CLASS:D: --> Str:D) { self.record.gist }
 # multi method raku(::?CLASS:U: --> Str:D) { ... }
 multi method raku(::?CLASS:D: --> Str:D) { self.^name ~ '.new(' ~ self.record.raku ~ ')' }
 
-multi method ACCEPTS(::?CLASS:_: ::?ROLE:U --> True) { }
-# multi method ACCEPTS(::?CLASS:U: T:D --> Bool:D)     { ... }
-multi method ACCEPTS(::?CLASS:D: |args --> Bool:D)   { self.record.ACCEPTS: |args }
+multi method ACCEPTS(::?CLASS:_: ::?CLASS:U --> True) { }
+# multi method ACCEPTS(::?CLASS:U: T:D --> Bool:D)      { ... }
+multi method ACCEPTS(::?CLASS:D: |args --> Bool:D)    { self.record.ACCEPTS: |args }
 
 #|[ Handles an operation on a field of the record given a callback accepting a
     value to perform the operation with. Typechecking and coercion of data
