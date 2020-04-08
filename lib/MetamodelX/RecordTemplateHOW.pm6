@@ -13,23 +13,14 @@ submethod BUILD(::?CLASS:D: Mu :$delegate! is raw, Block:D :$body_block! is raw,
     $!body_block := $body_block;
     %!parameters := %parameters.Map;
 
-    my constant N-ARCHETYPES = Metamodel::Archetypes.new:
-        :1nominal, :1parametric;
-    my constant G-ARCHETYPES = Metamodel::Archetypes.new:
-        :1nominal, :1parametric, :1generic;
-    $!archetypes  := $delegate.HOW.archetypes.generic || $body_block.is_generic
-                  ?? G-ARCHETYPES
-                  !! N-ARCHETYPES;
+    my Metamodel::Archetypes:D constant N-ARCHETYPES .= new: :1nominal, :1parametric;
+    my Metamodel::Archetypes:D constant G-ARCHETYPES .= new: :1nominal, :1parametric, :1generic;
+    $!archetypes := $delegate.HOW.archetypes.generic || $body_block.is_generic
+                 ?? G-ARCHETYPES
+                 !! N-ARCHETYPES;
 }
 
-method new_type(
-    ::?CLASS:_:
-    Mu       $delegate,
-    Block:D  $body_block is raw,
-    Str:_   :$name,
-            *%parameters
-    --> Mu
-) {
+method new_type(::?CLASS:_: Mu $delegate is raw, Block:D $body_block is raw, Str:_ :$name, *%parameters --> Mu) {
     use nqp;
     our Str:D constant ANON_NAME = '<anon record>';
 
@@ -62,9 +53,7 @@ method !do_parameterization(Mu $obj is raw, (@pos, %named) --> Mu) {
     $record.^compose
 }
 
-method archetypes(::?CLASS:D: --> Metamodel::Archetypes:D) {
-    $!archetypes
-}
+method archetypes(::?CLASS:D: --> Metamodel::Archetypes:D) { $!archetypes }
 
 method delegate(::?CLASS:D: Mu --> Mu) { $!delegate }
 
