@@ -44,3 +44,7 @@ v0.2.0:
       to be typed.
     - Arity exception messages now include the missing field or extraneous
       value in question.
+
+v0.2.1:
+    - Fix bug where all record type objects could smartmatch against any
+      record.
