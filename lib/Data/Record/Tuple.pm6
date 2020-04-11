@@ -67,7 +67,6 @@ my class WrappedTupleIterator does TupleIterator {
     method pull-one(::?CLASS:D: --> Mu) is raw {
         return IterationEnd if $!done;
 
-        LEAVE $!idx++;
         my Mu $field := $!fields.pull-one;
         my Mu $value := $!values.pull-one;
         if $field =:= IterationEnd && $value =:= IterationEnd {
@@ -93,6 +92,7 @@ my class WrappedTupleIterator does TupleIterator {
             ).throw;
         }
 
+        KEEP $!idx++;
         if $field ~~ Data::Record::Instance {
             if $value ~~ Data::Record::Instance {
                 X::Data::Record::TypeCheck.new(
@@ -136,7 +136,6 @@ my class ConsumedTupleIterator does TupleIterator {
     method pull-one(::?CLASS:D: --> Mu) is raw {
         return IterationEnd if $!done;
 
-        LEAVE $!idx++;
         my Mu $field := $!fields.pull-one;
         my Mu $value := $!values.pull-one;
         if $field =:= IterationEnd {
@@ -153,6 +152,7 @@ my class ConsumedTupleIterator does TupleIterator {
             ).throw;
         }
 
+        KEEP $!idx++;
         if $field ~~ Data::Record::Instance {
             if $value ~~ Data::Record::Instance {
                 X::Data::Record::TypeCheck.new(
