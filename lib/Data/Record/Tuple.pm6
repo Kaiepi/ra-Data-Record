@@ -72,48 +72,54 @@ my class WrappedTupleIterator does TupleIterator {
         my Mu $value := $!values.pull-one;
         if $field =:= IterationEnd && $value =:= IterationEnd {
             $!done = True;
-            IterationEnd
-        } elsif $field =:= IterationEnd {
-            die X::Data::Record::Extraneous.new:
+            return IterationEnd;
+        }
+        if $field =:= IterationEnd {
+            X::Data::Record::Extraneous.new(
                 operation => 'tuple reification',
                 type      => $!type,
                 what      => 'index',
                 key       => $!idx,
-                value     => $value
-        } elsif $value =:= IterationEnd {
-            die X::Data::Record::Missing.new:
+                value     => $value,
+            ).throw;
+        }
+        if $value =:= IterationEnd {
+            X::Data::Record::Missing.new(
                 operation => 'tuple reification',
                 type      => $!type,
                 what      => 'index',
                 key       => $!idx,
-                field     => $field
-        } elsif $field ~~ Data::Record::Instance {
+                field     => $field,
+            ).throw;
+        }
+
+        if $field ~~ Data::Record::Instance {
             if $value ~~ Data::Record::Instance {
-                if $value.DEFINITE {
-                    $value ~~ $field
-                        ?? $value
-                        !! $field.new: $value.record
-                } else {
-                    die X::Data::Record::TypeCheck.new:
-                        operation => 'tuple reification',
-                        expected  => $field,
-                        got       => $value
-                }
+                X::Data::Record::TypeCheck.new(
+                    operation => 'tuple reification',
+                    expected  => $field,
+                    got       => $value,
+                ).throw without $value;
+                $value ~~ $field
+                    ?? $value
+                    !! $field.new: $value.record
             } elsif $value ~~ $field.for {
                 $field.new: $value
             } else {
-                die X::Data::Record::TypeCheck.new:
+                X::Data::Record::TypeCheck.new(
                     operation => 'tuple reification',
                     expected  => $field,
-                    got       => $value
+                    got       => $value,
+                ).throw;
             }
         } elsif $value ~~ $field {
             $value
         } else {
-            die X::Data::Record::TypeCheck.new:
+            X::Data::Record::TypeCheck.new(
                 operation => 'tuple reification',
                 expected  => $field,
-                got       => $value
+                got       => $value,
+            ).throw;
         }
     }
 }
@@ -135,26 +141,28 @@ my class ConsumedTupleIterator does TupleIterator {
         my Mu $value := $!values.pull-one;
         if $field =:= IterationEnd {
             $!done = True;
-            IterationEnd
-        } elsif $value =:= IterationEnd {
-            die X::Data::Record::Missing.new:
+            return IterationEnd;
+        }
+        if $value =:= IterationEnd {
+            X::Data::Record::Missing.new(
                 operation => 'tuple reification',
                 type      => $!type,
                 what      => 'index',
                 key       => $!idx,
-                field     => $field
-        } elsif $field ~~ Data::Record::Instance {
+                field     => $field,
+            ).throw;
+        }
+
+        if $field ~~ Data::Record::Instance {
             if $value ~~ Data::Record::Instance {
-                if $value.DEFINITE {
-                    $value ~~ $field
-                        ?? $value
-                        !! $field.new: $value.record, :consume
-                } else {
-                    die X::Data::Record::TypeCheck.new:
-                        operation => 'tuple reification',
-                        expected  => $field,
-                        got       => $value
-                }
+                X::Data::Record::TypeCheck.new(
+                    operation => 'tuple reification',
+                    expected  => $field,
+                    got       => $value,
+                ).throw without $value;
+                $value ~~ $field
+                    ?? $value
+                    !! $field.new: $value.record, :consume
             } elsif $value ~~ $field.for {
                 CATCH { default { return self.pull-one } }
                 $field.new: $value, :consume
@@ -164,10 +172,11 @@ my class ConsumedTupleIterator does TupleIterator {
         } elsif $value ~~ $field {
             $value
         } else {
-            die X::Data::Record::TypeCheck.new:
+            X::Data::Record::TypeCheck.new(
                 operation => 'tuple reification',
                 expected  => $field,
-                got       => $value
+                got       => $value,
+            ).throw;
         }
     }
 }
@@ -187,53 +196,56 @@ my class SubsumedTupleIterator does TupleIterator {
         LEAVE $!idx++;
         my Mu $field := $!fields.pull-one;
         my Mu $value := $!values.pull-one;
-        if $value =:= IterationEnd {
-            if $field =:= IterationEnd {
-                $!done = True;
-                IterationEnd
-            } elsif $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
-                die X::Data::Record::Definite.new:
-                    type  => $!type,
-                    what  => 'index',
-                    key   => $!idx,
-                    value => $field
-            } else {
-                $field
-            }
-        } elsif $field =:= IterationEnd {
-            die X::Data::Record::Extraneous.new:
+        if $field =:= IterationEnd && $value =:= IterationEnd {
+            $!done = True;
+            return IterationEnd;
+        }
+        if $field =:= IterationEnd {
+            X::Data::Record::Extraneous.new(
                 operation => 'tuple reification',
                 type      => $!type,
                 what      => 'index',
                 key       => $!idx,
-                value     => $value
-        } elsif $field ~~ Data::Record::Instance {
+                value     => $value,
+            ).throw;
+        }
+        if $value =:= IterationEnd {
+            X::Data::Record::Definite.new(
+                type  => $!type,
+                what  => 'index',
+                key   => $!idx,
+                value => $field,
+            ).throw if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite;
+            return $field;
+        }
+
+        if $field ~~ Data::Record::Instance {
             if $value ~~ Data::Record::Instance {
-                if $value.DEFINITE {
-                    $value ~~ $field
-                        ?? $value
-                        !! $field.new: $value.record, :subsume
-                } else {
-                    die X::Data::Record::TypeCheck.new:
-                        operation => 'tuple reification',
-                        expected  => $field,
-                        got       => $value
-                }
+                X::Data::Record::TypeCheck.new(
+                    operation => 'tuple reification',
+                    expected  => $field,
+                    got       => $value,
+                ).throw without $value;
+                $value ~~ $field
+                    ?? $value
+                    !! $field.new: $value.record, :subsume
             } elsif $value ~~ $field.for {
                 $field.new: $value, :subsume
             } else {
-                die X::Data::Record::TypeCheck.new:
+                X::Data::Record::TypeCheck.new(
                     operation => 'tuple reification',
                     expected  => $field,
-                    got       => $value
+                    got       => $value,
+                ).throw;
             }
         } elsif $value ~~ $field {
             $value
         } else {
-            die X::Data::Record::TypeCheck.new:
+            X::Data::Record::TypeCheck.new(
                 operation => 'tuple reification',
                 expected  => $field,
-                got       => $value
+                got       => $value,
+            ).throw;
         }
     }
 }
@@ -254,29 +266,28 @@ my class CoercedTupleIterator does TupleIterator {
         my Mu $value := $!values.pull-one;
         if $field =:= IterationEnd {
             $!done = True;
-            IterationEnd
-        } elsif $value =:= IterationEnd {
-            if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
-                die X::Data::Record::Definite.new:
-                    type  => $!type,
-                    what  => 'index',
-                    key   => $!idx,
-                    value => $field
-            } else {
-                $field
-            }
-        } elsif $field ~~ Data::Record::Instance {
+            return IterationEnd;
+        }
+        if $value =:= IterationEnd {
+            X::Data::Record::Definite.new(
+                type  => $!type,
+                what  => 'index',
+                key   => $!idx,
+                value => $field,
+            ).throw if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite;
+            return $field;
+        }
+
+        if $field ~~ Data::Record::Instance {
             if $value ~~ Data::Record::Instance {
-                if $value.DEFINITE {
-                    $value ~~ $field
-                        ?? $value
-                        !! $field.new: $value.record, :coerce
-                } else {
-                    die X::Data::Record::TypeCheck.new:
-                        operation => 'tuple reification',
-                        expected  => $field,
-                        got       => $value
-                }
+                X::Data::Record::TypeCheck.new(
+                    operation => 'tuple reification',
+                    expected  => $field,
+                    got       => $value,
+                ).throw without $value;
+                $value ~~ $field
+                    ?? $value
+                    !! $field.new: $value.record, :coerce
             } elsif $value ~~ $field.for {
                 CATCH { default { return self.pull-one } }
                 $field.new: $value, :coerce
@@ -286,10 +297,11 @@ my class CoercedTupleIterator does TupleIterator {
         } elsif $value ~~ $field {
             $value
         } else {
-            die X::Data::Record::TypeCheck.new:
+            X::Data::Record::TypeCheck.new(
                 operation => 'tuple reification',
                 expected  => $field,
-                got       => $value
+                got       => $value,
+            ).throw;
         }
     }
 }

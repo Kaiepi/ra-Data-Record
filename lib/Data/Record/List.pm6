@@ -73,44 +73,44 @@ my class WrapListIterator does ListIterator {
         my Mu $field := $!fields.pull-one;
         my Mu $value := $!values.pull-one;
         if $value =:= IterationEnd {
-            die X::Data::Record::Missing.new(
+            X::Data::Record::Missing.new(
                 operation => $!operation,
                 type      => $!type,
                 what      => 'index',
                 key       => $!count % $!arity,
-                field     => $field
-            ) unless $!count %% $!arity;
-            IterationEnd
-        } else {
-            $!count++;
-            if $field ~~ Data::Record::Instance {
-                if $value ~~ Data::Record::Instance {
-                    if $value.DEFINITE {
-                        $value ~~ $field
-                            ?? $value
-                            !! $field.new: $value.record, |%!named-args
-                    } else {
-                        die X::Data::Record::TypeCheck.new:
-                            operation => $!operation,
-                            expected  => $field,
-                            got       => $value
-                    }
-                } elsif $value ~~ $field.for {
-                    $field.new: $value, |%!named-args
-                } else {
-                    die X::Data::Record::TypeCheck.new:
-                        operation => $!operation,
-                        expected  => $field,
-                        got       => $value
-                }
-            } elsif $value ~~ $field {
-                $value
-            } else {
-                die X::Data::Record::TypeCheck.new:
+                field     => $field,
+            ).throw unless $!count %% $!arity;
+            return IterationEnd;
+        }
+
+        KEEP $!count++;
+        if $field ~~ Data::Record::Instance {
+            if $value ~~ Data::Record::Instance {
+                X::Data::Record::TypeCheck.new(
                     operation => $!operation,
                     expected  => $field,
-                    got       => $value
+                    got       => $value,
+                ).throw without $value;
+                $value ~~ $field
+                    ?? $value
+                    !! $field.new: $value.record, |%!named-args
+            } elsif $value ~~ $field.for {
+                $field.new: $value, |%!named-args
+            } else {
+                X::Data::Record::TypeCheck.new(
+                    operation => $!operation,
+                    expected  => $field,
+                    got       => $value,
+                ).throw;
             }
+        } elsif $value ~~ $field {
+            $value
+        } else {
+            X::Data::Record::TypeCheck.new(
+                operation => $!operation,
+                expected  => $field,
+                got       => $value,
+            ).throw;
         }
     }
 }
@@ -125,39 +125,34 @@ method wrap(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
 # exception will be thrown.
 my class ConsumeListIterator does ListIterator {
     method pull-one(::?CLASS:D: --> Mu) is raw {
-        my Mu     $field     := $!fields.pull-one;
-        my Bool:D $is-record  = $field ~~ Data::Record::Instance;
-        loop {
-           if (my Mu $value := $!values.pull-one) =:= IterationEnd {
-                die X::Data::Record::Missing.new(
-                    operation => $!operation,
-                    type      => $!type,
-                    what      => 'index',
-                    key       => $!count % $!arity,
-                    field     => $field,
-                ) unless $!count %% $!arity;
-            } elsif $is-record {
+        my Mu $field := $!fields.pull-one;
+        if $field ~~ Data::Record::Instance {
+            until (my Mu $value := $!values.pull-one) =:= IterationEnd {
+                LAST $!count++;
                 if $value ~~ Data::Record::Instance {
-                    if $value !~~ $field {
-                        if $value.DEFINITE {
-                            CATCH { default { next } }
-                            $value := $field.new: $value.record, |%!named-args;
-                        } else {
-                            next;
-                        }
-                    }
+                    next without $value;
+                    return $value if $value ~~ $field;
+                    CATCH { default { next } }
+                    return $field.new: $value.record, |%!named-args;
                 } elsif $value ~~ $field.for {
                     CATCH { default { next } }
-                    $value := $field.new: $value, |%!named-args;
+                    return $field.new: $value, |%!named-args;
                 }
-                $!count++;
-            } elsif $value ~~ $field {
-                $!count++;
-            } else {
-                next;
             }
-            return $value;
+        } else {
+            until (my Mu $value := $!values.pull-one) =:= IterationEnd {
+                LAST $!count++;
+                return $value if $value ~~ $field;
+            }
         }
+        X::Data::Record::Missing.new(
+            operation => $!operation,
+            type      => $!type,
+            what      => 'index',
+            key       => $!count % $!arity,
+            field     => $field,
+        ).throw unless $!count %% $!arity;
+        IterationEnd
     }
 }
 
@@ -174,50 +169,45 @@ my class SubsumeListIterator does ListIterator {
         my Mu $field := $!fields.pull-one;
         my Mu $value := $!values.pull-one;
         if $value =:= IterationEnd {
-            if $!count %% $!arity {
-                IterationEnd
-            } else {
-                $!count++;
-                if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
-                    die X::Data::Record::Definite.new:
-                        type  => $!type,
-                        what  => 'index',
-                        key   => $!count,
-                        value => $field
-                } else {
-                    $field
-                }
-            }
-        } else {
+            return IterationEnd if $!count %% $!arity;
             $!count++;
-            if $field ~~ Data::Record::Instance {
-                if $value ~~ Data::Record::Instance {
-                    if $value.DEFINITE {
-                        $value ~~ $field
-                            ?? $value
-                            !! $field.new: $value.record, |%!named-args
-                    } else {
-                        die X::Data::Record::TypeCheck.new:
-                            operation => $!operation,
-                            expected  => $field,
-                            got       => $value
-                    }
-                } elsif $value ~~ $field.for {
-                    $field.new: $value, |%!named-args
-                } else {
-                    die X::Data::Record::TypeCheck.new:
-                        operation => $!operation,
-                        expected  => $field,
-                        got       => $value
-                }
-            } elsif $value ~~ $field {
-                $value
-            } else {
-                die X::Data::Record::TypeCheck.new:
+            X::Data::Record::Definite.new(
+                type  => $!type,
+                what  => 'index',
+                key   => $!count,
+                value => $field,
+            ).throw if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite;
+            return $field;
+        }
+
+        KEEP $!count++;
+        if $field ~~ Data::Record::Instance {
+            if $value ~~ Data::Record::Instance {
+                X::Data::Record::TypeCheck.new(
                     operation => $!operation,
                     expected  => $field,
-                    got       => $value
+                    got       => $value,
+                ).throw without $value;
+                $value ~~ $field
+                    ?? $value
+                    !! $field.new: $value.record, |%!named-args
+            } elsif $value ~~ $field.for {
+                $field.new: $value, |%!named-args
+            } else {
+                X::Data::Record::TypeCheck.new(
+                    operation => $!operation,
+                    expected  => $field,
+                    got       => $value,
+                ).throw;
             }
+        } elsif $value ~~ $field {
+            $value
+        } else {
+            X::Data::Record::TypeCheck.new(
+                operation => $!operation,
+                expected  => $field,
+                got       => $value,
+            ).throw;
         }
     }
 }
@@ -232,43 +222,36 @@ method subsume(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
 # throw if a definite field is missing.
 my class CoerceListIterator does ListIterator {
     method pull-one(::?CLASS:D: --> Mu) is raw {
-        my Mu     $field     := $!fields.pull-one;
-        my Bool:D $is-record  = $field ~~ Data::Record::Instance;
-        loop {
-           if (my Mu $value := $!values.pull-one) =:= IterationEnd {
-                if $!count !%% $!arity {
-                    $!count++;
-                    if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
-                        die X::Data::Record::Definite.new:
-                            type  => $!type,
-                            what  => 'index',
-                            key   => $!count,
-                            value => $field;
-                    } else {
-                        $value := $field;
-                    }
-                }
-            } elsif $is-record {
+        my Mu $field := $!fields.pull-one;
+        if $field ~~ Data::Record::Instance {
+            until (my Mu $value := $!values.pull-one) =:= IterationEnd {
+                LAST $!count++;
                 if $value ~~ Data::Record::Instance {
-                    if $value !~~ $field {
-                        if $value.DEFINITE {
-                            CATCH { default { next } }
-                            $value := $field.new: $value.record, |%!named-args;
-                        } else {
-                            next;
-                        }
-                    }
+                    next without $value;
+                    return $value if $value ~~ $field;
+                    CATCH { default { next } }
+                    return $field.new: $value.record, |%!named-args;
                 } elsif $value ~~ $field.for {
                     CATCH { default { next } }
-                    $value := $field.new: $value, |%!named-args;
+                    return $field.new: $value, |%!named-args;
                 }
-                $!count++;
-            } elsif $value ~~ $field {
-                $!count++;
-            } else {
-                next;
             }
-            return $value;
+        } else {
+            until (my Mu $value := $!values.pull-one) =:= IterationEnd {
+                LAST $!count++;
+                return $value if $value ~~ $field;
+            }
+        }
+        if $!count %% $!arity {
+            IterationEnd
+        } else {
+            X::Data::Record::Definite.new(
+                type  => $!type,
+                what  => 'index',
+                key   => $!count,
+                value => $field,
+            ).throw if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite;
+            $field
         }
     }
 }
@@ -371,20 +354,17 @@ my class ArrayIterator is WrapListIterator {
 proto method push(|) {*}
 multi method push(::THIS ::?ROLE:D: Mu $value is raw --> ::?ROLE:D) {
     my @fields := @.fields;
-    if +@fields == 1 {
-        self!field-op: 'push', {
-            @!record.push: $_;
-            self
-        }, @fields[0], $value;
-    } else {
-        die X::Data::Record::Missing.new:
-            operation => 'push',
-            type      => THIS,
-            what      => 'index',
-            key       => 1,
-            field     => @fields[1];
+    X::Data::Record::Missing.new(
+        operation => 'push',
+        type      => THIS,
+        what      => 'index',
+        key       => 1,
+        field     => @fields[1],
+    ).throw unless +@fields == 1;
+    self!field-op: 'push', {
+        @!record.push: $_;
         self
-    }
+    }, @fields[0], $value;
 }
 multi method push(::THIS ::?ROLE:D: **@values --> ::?ROLE:D) {
     @!record.push: Slip.from-iterator: ArrayIterator.new: 'push', THIS, @.fields, @values;
@@ -393,51 +373,42 @@ multi method push(::THIS ::?ROLE:D: **@values --> ::?ROLE:D) {
 
 method pop(::THIS ::?ROLE:D: --> Mu) is raw {
     my @fields := @.fields;
-    if +@fields == 1 {
-        @!record.pop
-    } else {
-        my Int:D $idx = +@fields - 1;
-        die X::Data::Record::Missing.new:
-            operation => 'pop',
-            type      => THIS,
-            what      => 'index',
-            key       => $idx,
-            field     => @fields[$idx]
-    }
+    X::Data::Record::Missing.new(
+        operation => 'pop',
+        type      => THIS,
+        what      => 'index',
+        key       => (my Int:D $idx = +@fields - 1),
+        field     => @fields[$idx],
+    ).throw unless +@fields == 1;
+    @!record.pop
 }
 
 method shift(::THIS ::?ROLE:D: --> Mu) is raw {
     my @fields := @.fields;
-    if +@fields == 1 {
-        @!record.shift
-    } else {
-        die X::Data::Record::Missing.new:
-            operation => 'shift',
-            type      => THIS,
-            what      => 'index',
-            key       => 0,
-            field     => @fields[0]
-    }
+    X::Data::Record::Missing.new(
+        operation => 'shift',
+        type      => THIS,
+        what      => 'index',
+        key       => 0,
+        field     => @fields[0],
+    ).throw unless +@fields == 1;
+    @!record.shift
 }
 
 proto method unshift(|) {*}
 multi method unshift(::THIS ::?ROLE:D: $value is raw --> ::?ROLE:D) {
     my @fields := @.fields;
-    if +@fields == 1 {
-        self!field-op: 'unshift', {
-           @!record.unshift: $_;
-           self
-        }, @fields[0], $value
-    } else {
-        my Int:D $idx = +@fields - 2;
-        die X::Data::Record::Missing.new:
-            operation => 'unshift',
-            type      => THIS,
-            what      => 'index',
-            key       => $idx,
-            field     => @fields[$idx];
-        self
-    }
+    X::Data::Record::Missing.new(
+        operation => 'unshift',
+        type      => THIS,
+        what      => 'index',
+        key       => (my Int:D $idx = +@fields - 2),
+        field     => @fields[$idx],
+    ).throw unless +@fields == 1;
+    self!field-op: 'unshift', {
+       @!record.unshift: $_;
+       self
+    }, @fields[0], $value
 }
 multi method unshift(::THIS ::?ROLE:D: **@values --> ::?ROLE:D) {
     @!record.unshift: Slip.from-iterator: ArrayIterator.new: 'unshift', THIS, @.fields, @values;

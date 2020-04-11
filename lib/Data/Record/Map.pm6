@@ -35,25 +35,23 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
     method wrap(::THIS ::?ROLE:_: Map:D $original is raw --> Map:D) {
         my %fields := %.fields;
         $original.new: gather for ($original.keys ∪ %fields.keys).keys -> Mu $key is raw {
-            if %fields{$key}:!exists {
-                die X::Data::Record::Extraneous.new:
-                    operation => 'map reification',
-                    type      => THIS,
-                    what      => 'key',
-                    key       => $key,
-                    value     => $original{$key};
-            } elsif $original{$key}:!exists {
-                die X::Data::Record::Missing.new:
-                    operation => 'map reification',
-                    type      => THIS,
-                    what      => 'key',
-                    key       => $key,
-                    field     => %fields{$key};
-            } else {
-                self!field-op: 'map reification', {
-                    take-rw $key => $_
-                }, %fields{$key}, $original{$key};
-            }
+            X::Data::Record::Extraneous.new(
+                operation => 'map reification',
+                type      => THIS,
+                what      => 'key',
+                key       => $key,
+                value     => $original{$key},
+            ).throw unless %fields{$key}:exists;
+            X::Data::Record::Missing.new(
+                operation => 'map reification',
+                type      => THIS,
+                what      => 'key',
+                key       => $key,
+                field     => %fields{$key},
+            ).throw unless $original{$key}:exists;
+            self!field-op: 'map reification', {
+                take-rw $key => $_
+            }, %fields{$key}, $original{$key};
         }
     }
 
@@ -61,47 +59,45 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
         my %fields := %.fields;
         $original.new: gather for ($original.keys ∪ %fields.keys).keys -> Mu $key is raw {
             next unless %fields{$key}:exists;
-            if $original{$key}:!exists {
-                die X::Data::Record::Missing.new:
-                    operation => 'map reification',
-                    type      => THIS,
-                    what      => 'key',
-                    key       => $key,
-                    field     => %fields{$key};
-            } else {
-                self!field-op: 'map reification', {
-                    take-rw ($key => $_)
-                }, %fields{$key}, $original{$key}, :consume;
-            }
+            X::Data::Record::Missing.new(
+                operation => 'map reification',
+                type      => THIS,
+                what      => 'key',
+                key       => $key,
+                field     => %fields{$key},
+            ).throw unless $original{$key}:exists;
+            self!field-op: 'map reification', {
+                take-rw ($key => $_)
+            }, %fields{$key}, $original{$key}, :consume;
         }
     }
 
     method subsume(::THIS ::?ROLE:_: Map:D $original is raw --> Map:D) {
         my %fields := %.fields;
         $original.new: gather for ($original.keys ∪ %fields.keys).keys -> Mu $key is raw {
-            if %fields{$key}:!exists {
-                die X::Data::Record::Extraneous.new:
-                    operation => 'map reification',
-                    type      => THIS,
-                    what      => 'key',
-                    key       => $key,
-                    value     => $original{$key};
+            X::Data::Record::Extraneous.new(
+                operation => 'map reification',
+                type      => THIS,
+                what      => 'key',
+                key       => $key,
+                value     => $original{$key},
+            ).throw unless %fields{$key}:exists;
+
+            my Mu $field := %fields{$key};
+            if $original{$key}:exists {
+                my Mu $value := $original{$key};
+                self!field-op: 'map reification', {
+                    take-rw ($key => $_)
+                }, $field, $value, :subsume;
+            } elsif $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
+                X::Data::Record::Definite.new(
+                    type  => THIS,
+                    what  => 'key',
+                    key   => $key,
+                    value => $field,
+                ).throw;
             } else {
-                my Mu $field := %fields{$key};
-                if $original{$key}:exists {
-                    my Mu $value := $original{$key};
-                    self!field-op: 'map reification', {
-                        take-rw ($key => $_)
-                    }, $field, $value, :subsume;
-                } elsif $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
-                    die X::Data::Record::Definite.new:
-                        type  => THIS,
-                        what  => 'key',
-                        key   => $key,
-                        value => $field;
-                } else {
-                    take-rw ($key => $field);
-                }
+                take-rw ($key => $field);
             }
         }
     }
@@ -118,11 +114,12 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
                     take-rw ($key => $_)
                 }, $field, $value, :coerce;
             } elsif $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
-                die X::Data::Record::Definite.new:
+                X::Data::Record::Definite.new(
                     type  => THIS,
                     what  => 'key',
                     key   => $key,
-                    value => $field;
+                    value => $field,
+                ).throw;
             } else {
                 take-rw ($key => $field);
             }
@@ -208,9 +205,10 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
     }
 
     method DELETE-KEY(::THIS ::?ROLE:D: Mu --> Mu) {
-        die X::Data::Record::Immutable.new:
+        X::Data::Record::Immutable.new(
             operation => 'deletion',
             type      => THIS
+        ).throw;
     }
 
     # An iterator that wraps the list of values passed to Hash array ops
@@ -259,14 +257,12 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
         method !pull-one-pair(::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) is raw {
             if %!fields{$key}:exists {
                 my Mu $field := %!fields{$key};
-                if $field ~~ Data::Record::Instance[List] | Array {
-                    self!perform-array-op: $key, $value
-                } else {
-                    die X::Data::Record::TypeCheck.new:
-                        operation => $.operation,
-                        expected  => $field,
-                        got       => $value
-                }
+                X::Data::Record::TypeCheck.new(
+                    operation => $.operation,
+                    expected  => $field,
+                    got       => $value,
+                ).throw unless $field ~~ Data::Record::Instance[List] | Array;
+                self!perform-array-op: $key, $value
             } else {
                 die X::Data::Record::OutOfBounds.new:
                     type => $!type,
@@ -354,23 +350,22 @@ my role Data::Record::Map[Bool:D :$structural! where ?*]
     method !strict-coerce(::THIS ::?ROLE:_: Map:D $original is raw, *%named-args --> Map:D) {
         my %fields := %.fields;
         $original.new: gather for ($original.keys ∪ %fields.keys).keys -> Mu $key is raw {
-            if $original{$key}:exists {
-                my Mu $value := $original{$key};
-                if %fields{$key}:exists {
-                    my Mu $field := %fields{$key};
-                    self!field-op: 'map reification', {
-                        take-rw ($key => $_)
-                    }, $field, $value, |%named-args;
-                } else {
-                    take-rw ($key => $value);
-                }
+            X::Data::Record::Missing.new(
+                operation => 'map reification',
+                type      => THIS,
+                what      => 'key',
+                key       => $key,
+                field     => %fields{$key},
+            ).throw unless $original{$key}:exists;
+
+            my Mu $value := $original{$key};
+            if %fields{$key}:exists {
+                my Mu $field := %fields{$key};
+                self!field-op: 'map reification', {
+                    take-rw ($key => $_)
+                }, $field, $value, |%named-args;
             } else {
-                die X::Data::Record::Missing.new:
-                    operation => 'map reification',
-                    type      => THIS,
-                    what      => 'key',
-                    key       => $key,
-                    field     => %fields{$key};
+                take-rw ($key => $value);
             }
         }
     }
@@ -398,15 +393,13 @@ my role Data::Record::Map[Bool:D :$structural! where ?*]
                 }
             } else {
                 my Mu $field := %fields{$key};
-                if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
-                    die X::Data::Record::Definite.new:
-                        type  => THIS,
-                        what  => 'key',
-                        key   => $key,
-                        value => $field;
-                } else {
-                    take-rw ($key => $field);
-                }
+                X::Data::Record::Definite.new(
+                    type  => THIS,
+                    what  => 'key',
+                    key   => $key,
+                    value => $field,
+                ).throw if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite;
+                take-rw ($key => $field);
             }
         }
     }
@@ -483,14 +476,12 @@ my role Data::Record::Map[Bool:D :$structural! where ?*]
     }
 
     method DELETE-KEY(::THIS ::?ROLE:D: Mu $key is raw --> Mu) is raw {
-        if %.fields{$key}:exists {
-            # XXX: Not quite the right exception
-            die X::Data::Record::Immutable.new:
-                operation => 'deletion',
-                type      => THIS
-        } else {
-            %!record{$key}:delete
-        }
+        # XXX: Not quite the right exception
+        X::Data::Record::Immutable.new(
+            operation => 'deletion',
+            type      => THIS,
+        ).throw if %.fields{$key}:exists;
+        %!record{$key}:delete
     }
 
     # Similar deal to non-structural maps' ArrayIterator, only now we
@@ -531,16 +522,13 @@ my role Data::Record::Map[Bool:D :$structural! where ?*]
         method !pull-one-pair(::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) is raw {
             if %!fields{$key}:exists {
                 my Mu $field := %!fields{$key};
-                if $field ~~ Data::Record::Instance[List] | Array {
-                    self!perform-array-op: $key, $value;
-                    next; # Not so fast, &return!
-                } else {
-                    die X::Data::Record::TypeCheck.new:
-                        operation => $.operation,
-                        expected  => $field,
-                        got       => $value;
-                    next; # Not so fast, &return!
-                }
+                X::Data::Record::TypeCheck.new(
+                    operation => $.operation,
+                    expected  => $field,
+                    got       => $value,
+                ).throw unless $field ~~ Data::Record::Instance[List] | Array;
+                self!perform-array-op: $key, $value;
+                next; # Not so fast, &return!
             } else {
                 ($key => $value);
             }
@@ -609,7 +597,7 @@ multi sub circumfix:<{@ @}>(Block:D $block is raw, Str:_ :$name, Bool:D :$struct
         Data::Record::Map, $block, :$name, :$structural
 }
 multi sub circumfix:<{@ @}>(%not-a-block-wtf, Str:_ :$name, Bool:_ :$structural --> Mu) is export {
-    die X::Data::Record::Block.new: type => Data::Record::Map
+    X::Data::Record::Block.new(type => Data::Record::Map).throw
 }
 
 multi sub infix:«(><)»(Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {

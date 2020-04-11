@@ -71,25 +71,28 @@ method !field-op(
                 ?? $value
                 !! $field.new: $value.record, |%named-args
             } else {
-                die X::Data::Record::TypeCheck.new:
+                X::Data::Record::TypeCheck.new(
                     operation => $operation,
                     expected  => $field,
-                    got       => $value
+                    got       => $value,
+                ).throw;
             }
         } elsif $value ~~ $field.for {
             op $field.new: $value, |%named-args
         } else {
-            die X::Data::Record::TypeCheck.new:
+            X::Data::Record::TypeCheck.new(
                 operation => $operation,
                 expected  => $field,
-                got       => $value
+                got       => $value,
+            ).throw;
         }
     } elsif $value ~~ $field {
         op $value
     } else {
-        die X::Data::Record::TypeCheck.new:
+        X::Data::Record::TypeCheck.new(
             operation => $operation,
             expected  => $field,
-            got       => $value
+            got       => $value,
+        ).throw;
     }
 }

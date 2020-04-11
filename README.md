@@ -11,8 +11,6 @@ SYNOPSIS
 ```perl6
 use Data::Record;
 
-CATCH { say .^name; .resume }
-
 # Data::Record introduces record types for maps, lists, and tuples:
 my constant Schema = {@
     name  => Str:D,
@@ -40,8 +38,11 @@ say %invalid; # OUTPUT: {items => [], name => Mrofnet}
 
 # For the most part, coerced data can be used the same way as the original
 # data, with the bonus of extra typechecking:
-%invalid<items>.push: (3, 'Item 3');        # OK!
-%invalid<items>.push: "OOPSIE WOOPSIE OwO"; # OUTPUT: X::Data::Record::TypeCheck
+{
+    CATCH { default { say .^name } }
+    %invalid<items>.push: (3, 'Item 3');        # OK!
+    %invalid<items>.push: "OOPSIE WOOPSIE OwO"; # OUTPUT: X::Data::Record::TypeCheck
+}
 
 # Finally, to restore the data's original typing, simply call the unrecord
 # method on it:
