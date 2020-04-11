@@ -170,13 +170,13 @@ my class SubsumeListIterator does ListIterator {
         my Mu $value := $!values.pull-one;
         if $value =:= IterationEnd {
             return IterationEnd if $!count %% $!arity;
-            $!count++;
             X::Data::Record::Definite.new(
                 type  => $!type,
                 what  => 'index',
                 key   => $!count,
                 value => $field,
             ).throw if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite;
+            $!count++;
             return $field;
         }
 
@@ -251,6 +251,7 @@ my class CoerceListIterator does ListIterator {
                 key   => $!count,
                 value => $field,
             ).throw if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite;
+            $!count++;
             $field
         }
     }
