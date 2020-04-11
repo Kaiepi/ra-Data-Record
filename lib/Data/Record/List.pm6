@@ -128,14 +128,14 @@ my class ConsumeListIterator does ListIterator {
         my Mu $field := $!fields.pull-one;
         if $field ~~ Data::Record::Instance {
             until (my Mu $value := $!values.pull-one) =:= IterationEnd {
-                LAST $!count++;
+                CATCH { default { next } }
+                LAST  $!count++;
                 if $value ~~ Data::Record::Instance {
                     next without $value;
-                    return $value if $value ~~ $field;
-                    CATCH { default { next } }
-                    return $field.new: $value.record, |%!named-args;
+                    return $value ~~ $field
+                        ?? $value
+                        !! $field.new: $value.record, |%!named-args;
                 } elsif $value ~~ $field.for {
-                    CATCH { default { next } }
                     return $field.new: $value, |%!named-args;
                 }
             }
@@ -225,14 +225,14 @@ my class CoerceListIterator does ListIterator {
         my Mu $field := $!fields.pull-one;
         if $field ~~ Data::Record::Instance {
             until (my Mu $value := $!values.pull-one) =:= IterationEnd {
-                LAST $!count++;
+                CATCH { default { next } }
+                LAST  $!count++;
                 if $value ~~ Data::Record::Instance {
                     next without $value;
-                    return $value if $value ~~ $field;
-                    CATCH { default { next } }
-                    return $field.new: $value.record, |%!named-args;
+                    return $value ~~ $field
+                        ?? $value
+                        !! $field.new: $value.record, |%!named-args;
                 } elsif $value ~~ $field.for {
-                    CATCH { default { next } }
                     return $field.new: $value, |%!named-args;
                 }
             }
@@ -339,9 +339,7 @@ my class ArrayIterator is WrapListIterator {
         my IterationBuffer:D \buffer .= new;
         loop {
             if (my Mu $result := self.pull-one) =:= IterationEnd {
-                my Int:D $count = $.count;
-                my Int:D $arity = $.arity;
-                last if $count %% $arity;
+                last if $.count %% $.arity;
                 return IterationEnd;
             } else {
                 buffer.push: $result;
