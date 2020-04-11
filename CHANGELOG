@@ -48,3 +48,8 @@ v0.2.0:
 v0.2.1:
     - Fix bug where all record type objects could smartmatch against any
       record.
+
+v0.2.2:
+    - Disallow resuming of typechecking exceptions.
+    - Fix bug where typechecking exceptions could still be thrown when
+      consuming or coercing tuples with record type fields.
