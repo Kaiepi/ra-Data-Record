@@ -160,6 +160,7 @@ my class ConsumedTupleIterator does TupleIterator {
                     expected  => $field,
                     got       => $value,
                 ).throw without $value;
+                CATCH { default { return self.pull-one } }
                 $value ~~ $field
                     ?? $value
                     !! $field.new: $value.record, :consume
@@ -285,6 +286,7 @@ my class CoercedTupleIterator does TupleIterator {
                     expected  => $field,
                     got       => $value,
                 ).throw without $value;
+                CATCH { default { return self.pull-one } }
                 $value ~~ $field
                     ?? $value
                     !! $field.new: $value.record, :coerce
