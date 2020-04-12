@@ -158,15 +158,17 @@ my class ConsumedTupleIterator does TupleIterator {
                     expected  => $field,
                     got       => $value,
                 ).throw without $value;
-                CATCH { default { return self.pull-one } }
                 $value ~~ $field
                     ?? $value
                     !! $field.new: $value.record, :consume
             } elsif $value ~~ $field.for {
-                CATCH { default { return self.pull-one } }
                 $field.new: $value, :consume
             } else {
-                self.pull-one
+                X::Data::Record::TypeCheck.new(
+                    operation => 'tuple reification',
+                    expected  => $field,
+                    got       => $value,
+                ).throw;
             }
         } elsif $value ~~ $field {
             $value
@@ -282,15 +284,17 @@ my class CoercedTupleIterator does TupleIterator {
                     expected  => $field,
                     got       => $value,
                 ).throw without $value;
-                CATCH { default { return self.pull-one } }
                 $value ~~ $field
                     ?? $value
                     !! $field.new: $value.record, :coerce
             } elsif $value ~~ $field.for {
-                CATCH { default { return self.pull-one } }
                 $field.new: $value, :coerce
             } else {
-                self.pull-one
+                X::Data::Record::TypeCheck.new(
+                    operation => 'tuple reification',
+                    expected  => $field,
+                    got       => $value,
+                ).throw;
             }
         } elsif $value ~~ $field {
             $value
