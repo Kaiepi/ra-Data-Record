@@ -53,3 +53,9 @@ v0.2.2:
     - Disallow resuming of typechecking exceptions.
     - Fix bug where typechecking exceptions could still be thrown when
       consuming or coercing tuples with record type fields.
+
+v0.2.3:
+    - Fix value counting in list iterators.
+    - Fix index counting in tuple iterators.
+    - Do not strip values that do not typecheck against their corresponding
+      fields when consuming or coercing tuples.
