@@ -1,8 +1,8 @@
 use v6.d;
 
-my role X::Data::Record is export { }
+role X::Data::Record { }
 
-my role X::Data::Record::Arity does X::Data::Record {
+role X::Data::Record::Arity does X::Data::Record {
     has Str:D $.operation is required;
     has Mu    $.type      is required;
     has Str:D $.what      is required;
@@ -13,7 +13,7 @@ my role X::Data::Record::Arity does X::Data::Record {
     }
 }
 
-my class X::Data::Record::Missing is Exception does X::Data::Record::Arity {
+class X::Data::Record::Missing is Exception does X::Data::Record::Arity {
     has Mu $.field;
     submethod TWEAK(::?CLASS:D: Mu :$field! is raw --> Nil) {
         $!field := $field;
@@ -23,7 +23,7 @@ my class X::Data::Record::Missing is Exception does X::Data::Record::Arity {
     }
 }
 
-my class X::Data::Record::Extraneous is Exception does X::Data::Record::Arity {
+class X::Data::Record::Extraneous is Exception does X::Data::Record::Arity {
     has Mu $.value;
     submethod TWEAK(::?CLASS:D: Mu :$value! is raw --> Nil) {
         $!value := $value;
@@ -33,9 +33,9 @@ my class X::Data::Record::Extraneous is Exception does X::Data::Record::Arity {
     }
 }
 
-my class X::Data::Record::TypeCheck is X::TypeCheck does X::Data::Record { }
+class X::Data::Record::TypeCheck is X::TypeCheck does X::Data::Record { }
 
-my class X::Data::Record::Definite is Exception does X::Data::Record {
+class X::Data::Record::Definite is Exception does X::Data::Record {
     has Mu    $.type  is required;
     has Str:D $.what  is required;
     has Mu    $.key   is required;
@@ -50,7 +50,7 @@ my class X::Data::Record::Definite is Exception does X::Data::Record {
     }
 }
 
-my class X::Data::Record::OutOfBounds is Exception does X::Data::Record {
+class X::Data::Record::OutOfBounds is Exception does X::Data::Record {
     has Mu    $.type is required;
     has Str:D $.what is required;
     has Mu    $.key  is required;
@@ -63,7 +63,7 @@ my class X::Data::Record::OutOfBounds is Exception does X::Data::Record {
     }
 }
 
-my class X::Data::Record::Immutable is Exception does X::Data::Record {
+class X::Data::Record::Immutable is Exception does X::Data::Record {
     has Mu    $.type      is required;
     has Str:D $.operation is required;
     submethod BUILD(::?CLASS:D: Mu :$type! is raw, Str:D :$!operation! --> Nil) {
@@ -74,7 +74,7 @@ my class X::Data::Record::Immutable is Exception does X::Data::Record {
     }
 }
 
-my class X::Data::Record::Block is Exception does X::Data::Record {
+class X::Data::Record::Block is Exception does X::Data::Record {
     has Mu $.type is required;
     submethod BUILD(::?CLASS:D: Mu :$type! is raw --> Nil) {
         $!type := $type;
@@ -84,7 +84,7 @@ my class X::Data::Record::Block is Exception does X::Data::Record {
     }
 }
 
-my class X::Data::Record::Composed is Exception does X::Data::Record {
+class X::Data::Record::Composed is Exception does X::Data::Record {
     has Mu    $.type      is required;
     has Str:D $.operation is required;
     submethod BUILD(::?CLASS:D: Mu :$type! is raw, Str:D :$!operation --> Nil) {

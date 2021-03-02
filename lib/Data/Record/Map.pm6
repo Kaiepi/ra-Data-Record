@@ -1,13 +1,13 @@
 use v6.d;
-use Data::Record::Instance;
-use Data::Record::Exceptions;
 use MetamodelX::RecordHOW;
 use MetamodelX::RecordTemplateHOW;
+use Data::Record::Instance;
+use Data::Record::Exceptions;
 
-my role Data::Record::Map[Bool:D :$structural! where !*]
-   does Data::Record::Instance[Map]
-   does Iterable
-   does Associative
+role Data::Record::Map[Bool:D :$structural! where !*]
+     does Data::Record::Instance[Map]
+     does Iterable
+     does Associative
 {
     has %!record;
 
@@ -319,10 +319,10 @@ my role Data::Record::Map[Bool:D :$structural! where !*]
     method antipairs(::?ROLE:D: --> Mu) { %!record.antipairs }
 }
 
-my role Data::Record::Map[Bool:D :$structural! where ?*]
-   does Data::Record::Instance[Map]
-   does Iterable
-   does Associative
+role Data::Record::Map[Bool:D :$structural! where ?*]
+     does Data::Record::Instance[Map]
+     does Iterable
+     does Associative
 {
     has %!record;
 
@@ -563,12 +563,6 @@ my role Data::Record::Map[Bool:D :$structural! where ?*]
     method append(::?ROLE:D: +values --> ::?ROLE:D) {
         %!record.push: Seq.new: AppendIterator.new: %!record, %.fields, values;
         self
-    }
-}
-
-my package EXPORT::DEFAULT {
-    package Data::Record {
-        constant Map = Data::Record::Map;
     }
 }
 
