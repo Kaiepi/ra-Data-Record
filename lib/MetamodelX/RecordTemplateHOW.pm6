@@ -21,14 +21,13 @@ submethod BUILD(::?CLASS:D: Mu :$delegate! is raw, Block:D :$body_block! is raw,
 }
 
 method new_type(::?CLASS:_: Mu $delegate is raw, Block:D $body_block is raw, Str:_ :$name, *%parameters --> Mu) {
-    use nqp;
     our Str:D constant ANON_NAME = '<anon record>';
 
     my ::?CLASS:D $meta := self.bless: :$delegate, :$body_block, :%parameters;
     my Mu         $obj  := Metamodel::Primitives.create_type: $meta, 'Uninstantiable';
     $meta.set_name: $obj, $name // ANON_NAME;
     Metamodel::Primitives.configure_type_checking: $obj, (), :!authoritative, :call_accepts;
-    nqp::setparameterizer($obj, &RECORD-PARAMETERIZER);
+    Metamodel::Primitives.set_parameterizer($obj, &RECORD-PARAMETERIZER);
     $obj
 }
 sub RECORD-PARAMETERIZER(Mu $obj is raw, @args --> Mu) {
