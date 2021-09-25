@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/Kaiepi/ra-Data-Record.svg?branch=master)](https://travis-ci.com/Kaiepi/ra-Data-Record)
+![Build Status](https://github.com/Kaiepi/ra-Data-Record/actions/workflows/test.yml/badge.svg)
 
 NAME
 ====
