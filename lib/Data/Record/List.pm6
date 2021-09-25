@@ -280,7 +280,7 @@ role Data::Record::List
     multi method raku(::?CLASS:U: --> Str:D) {
         my Str:D $raku = '[@ ' ~ @.fields[0].raku ~ ' @]';
         my Str:D $name = self.^name;
-        $raku ~= ":name('$name')" unless $name eq MetamodelX::RecordHOW::ANON_NAME;
+        $raku ~= ":name('$name')" unless $name eq self.HOW.anon_name;
         $raku
     }
 
