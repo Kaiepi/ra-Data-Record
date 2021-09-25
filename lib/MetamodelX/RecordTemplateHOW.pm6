@@ -8,8 +8,6 @@ has         %!parameters is required;
 
 has Metamodel::Archetypes:D $!archetypes is required;
 
-method anon_name(::?CLASS:_: --> Str:D) { MetamodelX::RecordHOW.anon_name }
-
 submethod BUILD(::?CLASS:D: Mu :$delegate! is raw, Block:D :$body_block! is raw, :%parameters! --> Nil) {
     $!delegate   := $delegate.^parameterize: |%parameters;
     $!body_block := $body_block;
@@ -25,7 +23,7 @@ submethod BUILD(::?CLASS:D: Mu :$delegate! is raw, Block:D :$body_block! is raw,
 method new_type(::?CLASS:_: Mu $delegate is raw, Block:D $body_block is raw, Str:_ :$name, *%parameters --> Mu) {
     my ::?CLASS:D $meta := self.bless: :$delegate, :$body_block, :%parameters;
     my Mu         $obj  := Metamodel::Primitives.create_type: $meta, 'Uninstantiable';
-    $meta.set_name: $obj, $name // self.anon_name;
+    $meta.set_name: $obj, $name // self!make_anonymous_name;
     Metamodel::Primitives.configure_type_checking: $obj, (), :!authoritative, :call_accepts;
     Metamodel::Primitives.set_parameterizer($obj, &RECORD-PARAMETERIZER);
     $obj
@@ -50,6 +48,15 @@ method !do_parameterization(Mu $obj is raw, (@pos, %named) --> Mu) {
     $record.^set_parameters: |%!parameters;
     $record.^add_role: $!delegate;
     $record.^compose
+}
+
+my atomicint $anon-id = 1;
+method !make_anonymous_name(::?CLASS:_: --> Str:D) {
+    "<anon record template { $anon-id⚛++ }>"
+}
+# XXX: Not objective for the sake of consistency with MetamodelX::RecordHOW.
+method is_anonymous(::?CLASS:D: Mu $obj is raw --> Bool:D) {
+    ?m/ ^ '<anon record template ' @(1..^⚛$anon-id) '>' $ / given self.name: $obj
 }
 
 method archetypes(::?CLASS:D: --> Metamodel::Archetypes:D) { $!archetypes }

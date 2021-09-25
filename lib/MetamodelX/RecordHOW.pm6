@@ -7,10 +7,18 @@ has Mu $!delegate;
 has    @!fields;
 has    %!parameters;
 
-method anon_name(::?CLASS:_: --> Str:D) { '<anon record>' }
-
 method new_type(::?CLASS:_: Str:_ :$name, |args --> Mu) {
-    callwith name => $name // self.anon_name, |args
+    callwith name => $name // self!make_anonymous_name, |args
+}
+
+my atomicint $anon-id = 1;
+method !make_anonymous_name(::?CLASS:_: --> Str:D) {
+    "<anon record { $anon-id⚛++ }>"
+}
+# XXX: Not objective; can't use an attribute at BUILD-time while depending on
+# Metamodel::ClassHOW.new_type.
+method is_anonymous(::?CLASS:D: Mu $obj is raw --> Bool:D) {
+    ?m/ ^ '<anon record ' @(1..^⚛$anon-id) '>' $ / given self.name: $obj
 }
 
 method template(::?CLASS:D: Mu --> Mu) { $!template }
