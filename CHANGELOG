@@ -59,3 +59,7 @@ v0.2.3:
     - Fix index counting in tuple iterators.
     - Do not strip values that do not typecheck against their corresponding
       fields when consuming or coercing tuples.
+
+v0.2.4:
+    - Compatibility updates for upcoming dispatch changes to Rakudo.
+    - Make the module's packaging a little easier to read.
