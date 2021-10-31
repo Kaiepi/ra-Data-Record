@@ -4,11 +4,128 @@ use MetamodelX::RecordTemplateHOW;
 use Data::Record::Instance;
 use Data::Record::Exceptions;
 
-role Data::Record::List
-     does Data::Record::Instance[List]
-     does Iterable
-     does Positional
-{
+#|[ Iterator for lists that are to become records. Classes that do this role
+    typecheck the list's values and coerce any of them that correspond to fields
+    that are records in some manner. ]
+my class ListIterator does Iterator {
+    has Mu         $.type      is required;
+    has Str:D      $.mode      is required;
+    has Str:D      $.operation is required;
+    has Iterator:D $.fields    is required;
+    has Iterator:D $.values    is required;
+    has Int:D      $.arity     is required;
+    has Int:D      $.count     = 0;
+
+    submethod BUILD(::?CLASS:D: :$!type! is raw, :$!mode!, :$!operation!, :$fields!, :$values! --> Nil) {
+        $!fields := (|$fields xx *).iterator;
+        $!values := $values.iterator;
+        $!arity  := $fields.elems;
+    }
+
+    method new(::?CLASS:_: $type is raw, $mode, $operation, $fields, $values --> ::?CLASS:D) {
+        self.bless: :$type, :$mode, :$operation, :$fields, :$values
+    }
+
+    method pull-one(::?CLASS:D:) is raw {
+        self."$!mode"($!fields.pull-one)
+    }
+
+    method is-lazy(::?CLASS:D: --> Bool:D) {
+        $!values.is-lazy
+    }
+
+    #|[ If any value in the given list cannot typecheck, an exception will be
+        thrown; if the arity of the list does not match that of the record, it
+        will be considered to have missing fields and thus an exception will be
+        thrown. ]
+    method wrap(::?CLASS:D: Mu $field is raw) is raw {
+        LEAVE $!count++;
+        self.map-one: $field, $!values.pull-one, :end<required>, :fail<now>
+    }
+
+    #|[ Any fields that do not typecheck will be stripped from the list, but if
+        the arity of the list does not match that of the record, it will be
+        considered to have missing fields and thus an exception will be thrown. ]
+    method consume(::?CLASS:D: Mu $field is raw) is raw {
+        LEAVE $!count++;
+        loop { return-rw self.map-one: $field, $!values.pull-one, :end<required>, :fail<again> }
+    }
+
+    #|[ If any fields are missing from the list, they will be stubbed (if
+        possible), but if any fields do not typecheck, then an exception will
+        be thrown. Note that it's impossible for extraneous fields to exist in
+        a list. ]
+    method subsume(::?CLASS:D: Mu $field is raw) is raw {
+        LEAVE $!count++;
+        self.map-one: $field, $!values.pull-one, :end<optional>, :fail<now>
+    }
+
+    #|[ If any values in the given list cannot typecheck, they will be stripped
+        from the list; if any fields are missing from the given list, they will
+        be stubbed (if possible).  This should only throw if a definite field
+        is missing. ]
+    method coerce(::?CLASS:D: Mu $field is raw) is raw {
+        LEAVE $!count++;
+        loop { return-rw self.map-one: $field, $!values.pull-one, :end<optional>, :fail<again> }
+    }
+
+    method map-one(::?CLASS:D: Mu $field is raw, Mu $value is raw, :$end!, :$fail!) {
+        $value =:= IterationEnd
+          ?? self."end-$end"($field, $value)
+          !! Metamodel::Primitives.is_type($value, Data::Record::Instance:U) || !$field.ACCEPTS($value)
+            ?? self."fail-$fail"($field, $value)
+            !! $value
+    }
+
+    method end-required(::?CLASS:D: Mu $field is raw, Mu $value is raw --> IterationEnd) {
+        X::Data::Record::Missing.new(
+            :$!operation, :$!type, :what<index>, :key($!count % $!arity), :$field
+        ).throw unless $!count %% $!arity;
+    }
+
+    method end-optional(::?CLASS:D: Mu $field is raw, Mu $value is raw --> Mu) is raw {
+        $!count %% $!arity
+          ?? IterationEnd
+          !! Metamodel::Primitives.is_type($field.HOW, Metamodel::DefiniteHOW) && $field.^definite
+            ?? X::Data::Record::Definite.new(:$!type, :what<index>, :key($!count), :value($field)).throw
+            !! $field
+    }
+
+    method fail-now(::?CLASS:D: Mu $field is raw, Mu $value is raw --> IterationEnd) {
+        X::Data::Record::TypeCheck.new(:$!operation, :expected($field), :got($value)).throw
+    }
+
+    method fail-again(::?CLASS:D: Mu $field is raw, Mu $value is raw --> IterationEnd) {
+        next
+    }
+}
+
+#|[ Iterator for array ops taking lists of values (push/unshift/append/prepend).
+    This is mostly identical to ListIterator, but adds
+    behaviour to handle checking the arity of the list, which is handled in
+    such a way as to support lazy lists. ]
+my class ArrayIterator is ListIterator {
+    method push-all(::?CLASS:D: \target --> IterationEnd) {
+        my IterationBuffer:D \buffer .= new;
+        loop {
+            if (my $result := self.pull-one) =:= IterationEnd {
+                last if $.count %% $.arity;
+                return IterationEnd;
+            } else {
+                buffer.push: $result;
+            }
+        }
+        target.append: buffer;
+    }
+}
+#=[ Array ops can get passed lazy lists, though Array does not support
+    this. We can't throw X::Cannot::Lazy ourselves; what if someone defines
+    their own List subtype with methods that support them? Instead, we can
+    check the arity whenever this iterator's values get pushed onto the
+    relevant iterator of our record, so we have some way to check the
+    list's arity without using the elems method. ]
+
+role Data::Record::List does Data::Record::Instance[List] does Iterable does Positional {
     has @!record;
 
     submethod BUILD(::?ROLE:D: :@record! --> Nil) {
@@ -35,231 +152,20 @@ role Data::Record::List
         @record.elems unless @record.is-lazy; # Reify eager lists for eager typechecking.
         self.bless: :@record
     }
-
-    # Iterator for lists that are to become records. Classes that do this role
-    # typecheck the list's values and coerce any of them that correspond to fields
-    # that are records in some manner.
-    my role ListIterator does Iterator {
-        has Str:D $.operation is required;
-        has Mu    $.type      is required;
-        has Int:D $.arity     is required;
-        has Int:D $.count     = 0;
-
-        has Iterator:D $!fields     is required;
-        has Iterator:D $!values     is required;
-        has Mu         %!named-args is required;
-
-        submethod BUILD(::?CLASS:D: Str:D :$!operation!, Mu :$type! is raw, :@fields!, Iterable:D :$values!, :%!named-args! --> Nil) {
-            $!type   := $type;
-            $!fields := (|@fields xx *).iterator;
-            $!values := $values.iterator;
-            $!arity  := @fields.elems;
-        }
-
-        method new(::?CLASS:_: Str:D $operation, $type is raw, @fields, Iterable:D $values, *%named-args --> ::?ROLE:D) {
-            self.bless: :$operation, :$type, :@fields, :$values, :%named-args
-        }
-
-        method is-lazy(::?CLASS:D: --> Bool:D) {
-            $!values.is-lazy
-        }
-    }
-
-    # This wraps a list with a record. If any value in the given list cannot
-    # typecheck, an exception will be thrown; if the arity of the list does not
-    # match that of the record, it will be considered to have missing fields and
-    # thus an exception will be thrown.
-    my class WrapListIterator does ListIterator {
-        method pull-one(::?CLASS:D: --> Mu) is raw {
-            my Mu $field := $!fields.pull-one;
-            my Mu $value := $!values.pull-one;
-            if $value =:= IterationEnd {
-                X::Data::Record::Missing.new(
-                    operation => $!operation,
-                    type      => $!type,
-                    what      => 'index',
-                    key       => $!count % $!arity,
-                    field     => $field,
-                ).throw unless $!count %% $!arity;
-                return IterationEnd;
-            }
-
-            KEEP $!count++;
-            if $field ~~ Data::Record::Instance {
-                if $value ~~ Data::Record::Instance {
-                    X::Data::Record::TypeCheck.new(
-                        operation => $!operation,
-                        expected  => $field,
-                        got       => $value,
-                    ).throw without $value;
-                    $value ~~ $field
-                        ?? $value
-                        !! $field.new: $value.record, |%!named-args
-                } elsif $value ~~ $field.for {
-                    $field.new: $value, |%!named-args
-                } else {
-                    X::Data::Record::TypeCheck.new(
-                        operation => $!operation,
-                        expected  => $field,
-                        got       => $value,
-                    ).throw;
-                }
-            } elsif $value ~~ $field {
-                $value
-            } else {
-                X::Data::Record::TypeCheck.new(
-                    operation => $!operation,
-                    expected  => $field,
-                    got       => $value,
-                ).throw;
-            }
-        }
-    }
-
     method wrap(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
-        T.from-iterator: WrapListIterator.new: 'list reification', THIS, @.fields, $original
-    }
-
-    # This consumes a list with a record. Any fields that do not typecheck will be
-    # stripped from the list, but if the arity of the list does not match that of
-    # the record, it will be considered to have missing fields and thus an
-    # exception will be thrown.
-    my class ConsumeListIterator does ListIterator {
-        method pull-one(::?CLASS:D: --> Mu) is raw {
-            my Mu $field := $!fields.pull-one;
-            if $field ~~ Data::Record::Instance {
-                until (my Mu $value := $!values.pull-one) =:= IterationEnd {
-                    CATCH { default { next } }
-                    LAST  $!count++;
-                    if $value ~~ Data::Record::Instance {
-                        next without $value;
-                        return $value ~~ $field
-                            ?? $value
-                            !! $field.new: $value.record, |%!named-args;
-                    } elsif $value ~~ $field.for {
-                        return $field.new: $value, |%!named-args;
-                    }
-                }
-            } else {
-                until (my Mu $value := $!values.pull-one) =:= IterationEnd {
-                    LAST $!count++;
-                    return $value if $value ~~ $field;
-                }
-            }
-            X::Data::Record::Missing.new(
-                operation => $!operation,
-                type      => $!type,
-                what      => 'index',
-                key       => $!count % $!arity,
-                field     => $field,
-            ).throw unless $!count %% $!arity;
-            IterationEnd
-        }
+        T.from-iterator: ListIterator.new: THIS, 'wrap', 'list reification', @.fields, $original
     }
 
     method consume(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
-        T.from-iterator: ConsumeListIterator.new: 'list reification', THIS, @.fields, $original, :consume
-    }
-
-    # This subsumes a list with a record. If any fields are missing from the list,
-    # they will be stubbed (if possible), but if any fields do not typecheck, then
-    # an exception will be thrown. Note that it's impossible for extraneous fields
-    # to exist in a list.
-    my class SubsumeListIterator does ListIterator {
-        method pull-one(::?CLASS:D: --> Mu) is raw {
-            my Mu $field := $!fields.pull-one;
-            my Mu $value := $!values.pull-one;
-            if $value =:= IterationEnd {
-                return IterationEnd if $!count %% $!arity;
-                X::Data::Record::Definite.new(
-                    type  => $!type,
-                    what  => 'index',
-                    key   => $!count,
-                    value => $field,
-                ).throw if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite;
-                $!count++;
-                return $field;
-            }
-
-            KEEP $!count++;
-            if $field ~~ Data::Record::Instance {
-                if $value ~~ Data::Record::Instance {
-                    X::Data::Record::TypeCheck.new(
-                        operation => $!operation,
-                        expected  => $field,
-                        got       => $value,
-                    ).throw without $value;
-                    $value ~~ $field
-                        ?? $value
-                        !! $field.new: $value.record, |%!named-args
-                } elsif $value ~~ $field.for {
-                    $field.new: $value, |%!named-args
-                } else {
-                    X::Data::Record::TypeCheck.new(
-                        operation => $!operation,
-                        expected  => $field,
-                        got       => $value,
-                    ).throw;
-                }
-            } elsif $value ~~ $field {
-                $value
-            } else {
-                X::Data::Record::TypeCheck.new(
-                    operation => $!operation,
-                    expected  => $field,
-                    got       => $value,
-                ).throw;
-            }
-        }
+        T.from-iterator: ListIterator.new: THIS, 'consume', 'list reification', @.fields, $original
     }
 
     method subsume(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
-        T.from-iterator: SubsumeListIterator.new: 'list reification', THIS, @.fields, $original, :subsume
-    }
-
-    # This coerces a list to a record. If any values in the given list cannot
-    # typecheck, they will be stripped from the list; if any fields are missing
-    # from the given list, they will be stubbed (if possible). This should only
-    # throw if a definite field is missing.
-    my class CoerceListIterator does ListIterator {
-        method pull-one(::?CLASS:D: --> Mu) is raw {
-            my Mu $field := $!fields.pull-one;
-            if $field ~~ Data::Record::Instance {
-                until (my Mu $value := $!values.pull-one) =:= IterationEnd {
-                    CATCH { default { next } }
-                    LAST  $!count++;
-                    if $value ~~ Data::Record::Instance {
-                        next without $value;
-                        return $value ~~ $field
-                            ?? $value
-                            !! $field.new: $value.record, |%!named-args;
-                    } elsif $value ~~ $field.for {
-                        return $field.new: $value, |%!named-args;
-                    }
-                }
-            } else {
-                until (my Mu $value := $!values.pull-one) =:= IterationEnd {
-                    LAST $!count++;
-                    return $value if $value ~~ $field;
-                }
-            }
-            if $!count %% $!arity {
-                IterationEnd
-            } else {
-                X::Data::Record::Definite.new(
-                    type  => $!type,
-                    what  => 'index',
-                    key   => $!count,
-                    value => $field,
-                ).throw if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite;
-                $!count++;
-                $field
-            }
-        }
+        T.from-iterator: ListIterator.new: THIS, 'subsume', 'list reification', @.fields, $original
     }
 
     method coerce(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
-        T.from-iterator: CoerceListIterator.new: 'list reification', THIS, @.fields, $original, :coerce
+        T.from-iterator: ListIterator.new: THIS, 'coerce', 'list reification', @.fields, $original
     }
 
     method fields(::?ROLE:_: --> List:D) { self.^fields }
@@ -325,32 +231,6 @@ role Data::Record::List
         @!record[$pos]:delete
     }
 
-    # Iterator for array ops taking lists of values (push/unshift/append/prepend).
-    # This is mostly identical to WrapListIterator, but adds behaviour to handle
-    # checking the arity of the list, which is handled in such a way as to support
-    # lazy lists.
-    #
-    # Array ops can get passed lazy lists, though Array does not support this. We
-    # can't throw X::Cannot::Lazy ourselves; what if someone defines their own List
-    # subtype with methods that support them? Instead, we can check the arity
-    # whenever this iterator's values get pushed onto the relevant iterator of our
-    # record, so we have some way to check the list's arity without using the elems
-    # method.
-    my class ArrayIterator is WrapListIterator {
-        method push-all(::?CLASS:D: \target --> IterationEnd) {
-            my IterationBuffer:D \buffer .= new;
-            loop {
-                if (my Mu $result := self.pull-one) =:= IterationEnd {
-                    last if $.count %% $.arity;
-                    return IterationEnd;
-                } else {
-                    buffer.push: $result;
-                }
-            }
-            target.append: buffer;
-        }
-    }
-
     proto method push(|) {*}
     multi method push(::THIS ::?ROLE:D: Mu $value is raw --> ::?ROLE:D) {
         my @fields := @.fields;
@@ -367,7 +247,7 @@ role Data::Record::List
         }, @fields[0], $value;
     }
     multi method push(::THIS ::?ROLE:D: **@values --> ::?ROLE:D) {
-        @!record.push: Slip.from-iterator: ArrayIterator.new: 'push', THIS, @.fields, @values;
+        @!record.push: Slip.from-iterator: ArrayIterator.new: THIS, 'wrap', 'push', @.fields, @values;
         self
     }
 
@@ -411,27 +291,27 @@ role Data::Record::List
         }, @fields[0], $value
     }
     multi method unshift(::THIS ::?ROLE:D: **@values --> ::?ROLE:D) {
-        @!record.unshift: Slip.from-iterator: ArrayIterator.new: 'unshift', THIS, @.fields, @values;
+        @!record.unshift: Slip.from-iterator: ArrayIterator.new: THIS, 'wrap', 'unshift', @.fields, @values;
         self
     }
 
     proto method prepend(|) {*}
     multi method prepend(::THIS ::?ROLE:D: Iterable:D $values is raw --> ::?ROLE:D) {
-        @!record.prepend: Seq.new: ArrayIterator.new: 'prepend', THIS, @.fields, $values;
+        @!record.prepend: Seq.new: ArrayIterator.new: THIS, 'wrap', 'prepend', @.fields, $values;
         self
     }
     multi method prepend(::THIS ::?ROLE:D: **@values --> ::?ROLE:D) {
-        @!record.prepend: Slip.from-iterator: ArrayIterator.new: 'prepend', THIS, @.fields, @values;
+        @!record.prepend: Slip.from-iterator: ArrayIterator.new: THIS, 'wrap', 'prepend', @.fields, @values;
         self
     }
 
     proto method append(|) {*}
     multi method append(::THIS ::?ROLE:D: Iterable:D $values is raw --> ::?ROLE:D) {
-        @!record.append: Seq.new: ArrayIterator.new: 'append', THIS, @.fields, $values;
+        @!record.append: Seq.new: ArrayIterator.new: THIS, 'wrap', 'append', @.fields, $values;
         self
     }
     multi method append(::THIS ::?ROLE:D: **@values --> ::?ROLE:D) {
-        @!record.append: Slip.from-iterator: ArrayIterator.new: 'append', THIS, @.fields, @values;
+        @!record.append: Slip.from-iterator: ArrayIterator.new:  THIS, 'wrap', 'append', @.fields, @values;
         self
     }
 
