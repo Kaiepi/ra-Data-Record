@@ -4,11 +4,102 @@ use MetamodelX::RecordTemplateHOW;
 use Data::Record::Instance;
 use Data::Record::Exceptions;
 
-role Data::Record::Tuple
-     does Data::Record::Instance[List]
-     does Iterable
-     does Positional
-{
+#|[ Iterator for tuples (lists of fixed length) that are to become records.
+    Typechecks the list's values and coerces any record fields along the way. ]
+my class TupleIterator does Iterator {
+    has Mu         $.type      is required;
+    has Str:D      $.mode      is required;
+    has Str:D      $.operation is required;
+    has Iterator:D $.fields    is required;
+    has Iterator:D $.values    is required;
+    has Int:D      $.arity     is required;
+    has Int:D      $.count     = 0;
+
+    submethod BUILD(::?CLASS:D: Mu :$!type! is raw, :$!mode!, :$!operation!, :$fields! is raw, :$values! is raw --> Nil) {
+        $!fields := $fields.iterator;
+        $!values := $values.iterator;
+        $!arity  := $fields.elems;
+    }
+
+    method new(::?CLASS:_: Mu $type is raw, $mode, $operation, $fields is raw, $values is raw --> ::?CLASS:D) {
+        self.bless: :$type, :$mode, :$operation, :$fields, :$values
+    }
+
+    method pull-one(::?CLASS:D:) is raw {
+        self."$!mode"($!fields.pull-one)
+    }
+
+    method is-lazy(::?CLASS:D: --> Bool:D) {
+        $!values.is-lazy
+    }
+
+    #|[ The list must have an arity equal to the tuple type's and all values
+        must typecheck as their corresponding fields, otherwise an exception
+        will be thrown. ]
+    method wrap(::?CLASS:D: Mu $field is raw) is raw {
+        LEAVE $!count++;
+        self.map-one: $field, $!values.pull-one, :guard<more>, :keep<missing>
+    }
+
+    #|[ The list must have an arity greater than or equal to the tuple type; if
+        it's greater, extraneous values will be stripped. If any values are
+        missing or values corresponding to fields don't typecheck, an exception
+        will be thrown. ]
+    method consume(::?CLASS:D: Mu $field is raw) is raw {
+        LEAVE $!count++;
+        self.map-one: $field, $!values.pull-one, :guard<less>, :keep<missing>
+    }
+
+    #|[ The list must have an arity lesser than or equal to the tuple type's;
+        if it's lesser, missing values will be stubbed (if possible).  If any
+        values don't typecheck as their corresponding fields, an exception will
+        be thrown. ]
+    method subsume(::?CLASS:D: Mu $field is raw) is raw {
+        LEAVE $!count++;
+        self.map-one: $field, $!values.pull-one, :guard<more>, :keep<coercing>
+    }
+
+    #|[ Coerces a list. Arity does not matter; missing values are stubbed (if
+        possible) and extraneous values are stripped. If any values don't
+        typecheck as their corresponding fields, an exception will be thrown. ]
+    method coerce(::?CLASS:D: Mu $field is raw) is raw {
+        LEAVE $!count++;
+        self.map-one: $field, $!values.pull-one, :guard<less>, :keep<coercing>
+    }
+
+    method map-one(::?CLASS:D: Mu $field is raw, Mu $value is raw, :$guard!, :$keep!) is raw {
+        $field =:= IterationEnd
+          ?? self."guard-$guard"($field, $value)
+          !! $value =:= IterationEnd
+            ?? self."keep-$keep"($field, $value)
+            !! Metamodel::Primitives.is_type($value, Data::Record::Instance:U) || !$field.ACCEPTS($value)
+              ?? X::Data::Record::TypeCheck.new(:$!operation, :expected($field), :got($value)).throw
+              !! $value
+    }
+
+    method guard-more(Mu $field is raw, Mu $value is raw --> IterationEnd) {
+        X::Data::Record::Extraneous.new(
+            :$!operation, :$!type, :what<index>, :key($!count), :$value
+        ).throw unless $value =:= IterationEnd;
+    }
+
+    method guard-less(Mu, Mu --> IterationEnd) { }
+
+    method keep-missing(Mu $field is raw, Mu $value is raw --> IterationEnd) {
+        X::Data::Record::Missing.new(
+            :$!operation, :$!type, :what<index>, :key($!count), :$field
+        ).throw;
+    }
+
+    method keep-coercing(Mu $field is raw, Mu $value is raw --> Mu) is raw {
+        X::Data::Record::Definite.new(
+            :$!type, :what<index>, :key($!count), :value($field)
+        ).throw if $field.HOW.archetypes.definite && $field.^definite;
+        $field
+    }
+}
+
+role Data::Record::Tuple does Data::Record::Instance[List] does Iterable does Positional {
     has @!record;
 
     submethod BUILD(::?ROLE:D: :@record --> Nil) {
@@ -36,281 +127,20 @@ role Data::Record::Tuple
         self.bless: :@record
     }
 
-    # Iterator for tuples (lists of fixed length) that are to become records.
-    # Classes that do this role typecheck the list's values and coerce any of them
-    # that correspond to fields that are records in some manner.
-    my role TupleIterator does Iterator {
-        has Mu         $!type   is required;
-        has Iterator:D $!fields is required;
-        has Iterator:D $!values is required;
-        has Int:D      $!idx    = 0;
-        has Bool:D     $!done   = False;
-
-        submethod BUILD(::?CLASS:D: Mu :$type is raw, List:D :$fields is raw, List:D :$record is raw --> Nil) {
-            $!type   := $type;
-            $!fields := $fields.iterator;
-            $!values := $record.iterator;
-        }
-
-        method new(::?CLASS:_: Mu $type is raw, List:D $fields is raw, List:D $record is raw --> ::?ROLE:D) {
-            self.bless: :$type, :$fields, :$record
-        }
-
-        method is-lazy(::?CLASS:D: --> Bool:D) {
-            $!values.is-lazy
-        }
-    }
-
-    # Wraps a list. The list must have an arity equal to the tuple type's and all
-    # values must typecheck as their corresponding fields, otherwise an exception
-    # will be thrown.
-    my class WrappedTupleIterator does TupleIterator {
-        method pull-one(::?CLASS:D: --> Mu) is raw {
-            return IterationEnd if $!done;
-
-            my Mu $field := $!fields.pull-one;
-            my Mu $value := $!values.pull-one;
-            if $field =:= IterationEnd && $value =:= IterationEnd {
-                $!done = True;
-                return IterationEnd;
-            }
-            if $field =:= IterationEnd {
-                X::Data::Record::Extraneous.new(
-                    operation => 'tuple reification',
-                    type      => $!type,
-                    what      => 'index',
-                    key       => $!idx,
-                    value     => $value,
-                ).throw;
-            }
-            if $value =:= IterationEnd {
-                X::Data::Record::Missing.new(
-                    operation => 'tuple reification',
-                    type      => $!type,
-                    what      => 'index',
-                    key       => $!idx,
-                    field     => $field,
-                ).throw;
-            }
-            KEEP $!idx++;
-            if $field ~~ Data::Record::Instance {
-                if $value ~~ Data::Record::Instance {
-                    X::Data::Record::TypeCheck.new(
-                        operation => 'tuple reification',
-                        expected  => $field,
-                        got       => $value,
-                    ).throw without $value;
-                    $value ~~ $field
-                        ?? $value
-                        !! $field.new: $value.record
-                } elsif $value ~~ $field.for {
-                    $field.new: $value
-                } else {
-                    X::Data::Record::TypeCheck.new(
-                        operation => 'tuple reification',
-                        expected  => $field,
-                        got       => $value,
-                    ).throw;
-                }
-            } elsif $value ~~ $field {
-                $value
-            } else {
-                X::Data::Record::TypeCheck.new(
-                    operation => 'tuple reification',
-                    expected  => $field,
-                    got       => $value,
-                ).throw;
-            }
-        }
-    }
-
     method wrap(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
-        T.from-iterator: WrappedTupleIterator.new: THIS, @.fields, $original
-    }
-
-    # Consumes a list. The list must have an arity greater than or equal to the
-    # tuple type; if it's greater, extraneous values will be stripped. If any
-    # values are missing or values corresponding to fields don't typecheck, an
-    # exception will be thrown.
-    my class ConsumedTupleIterator does TupleIterator {
-        method pull-one(::?CLASS:D: --> Mu) is raw {
-            return IterationEnd if $!done;
-
-            my Mu $field := $!fields.pull-one;
-            my Mu $value := $!values.pull-one;
-            if $field =:= IterationEnd {
-                $!done = True;
-                return IterationEnd;
-            }
-            if $value =:= IterationEnd {
-                X::Data::Record::Missing.new(
-                    operation => 'tuple reification',
-                    type      => $!type,
-                    what      => 'index',
-                    key       => $!idx,
-                    field     => $field,
-                ).throw;
-            }
-            KEEP $!idx++;
-            if $field ~~ Data::Record::Instance {
-                if $value ~~ Data::Record::Instance {
-                    X::Data::Record::TypeCheck.new(
-                        operation => 'tuple reification',
-                        expected  => $field,
-                        got       => $value,
-                    ).throw without $value;
-                    $value ~~ $field
-                        ?? $value
-                        !! $field.new: $value.record, :consume
-                } elsif $value ~~ $field.for {
-                    $field.new: $value, :consume
-                } else {
-                    X::Data::Record::TypeCheck.new(
-                        operation => 'tuple reification',
-                        expected  => $field,
-                        got       => $value,
-                    ).throw;
-                }
-            } elsif $value ~~ $field {
-                $value
-            } else {
-                X::Data::Record::TypeCheck.new(
-                    operation => 'tuple reification',
-                    expected  => $field,
-                    got       => $value,
-                ).throw;
-            }
-        }
+        T.from-iterator: TupleIterator.new: THIS, 'wrap', 'tuple reification', @.fields, $original
     }
 
     method consume(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
-        T.from-iterator: ConsumedTupleIterator.new: THIS, @.fields, $original
-    }
-
-    # Subsumes a list. The list must have an arity lesser than or equal to the
-    # tuple type's; if it's lesser, missing values will be stubbed (if possible).
-    # If any values don't typecheck as their corresponding fields, an exception
-    # will be thrown.
-    my class SubsumedTupleIterator does TupleIterator {
-        method pull-one(::?CLASS:D: --> Mu) is raw {
-            return IterationEnd if $!done;
-
-            my Mu $field := $!fields.pull-one;
-            my Mu $value := $!values.pull-one;
-            if $field =:= IterationEnd && $value =:= IterationEnd {
-                $!done = True;
-                return IterationEnd;
-            }
-            if $field =:= IterationEnd {
-                X::Data::Record::Extraneous.new(
-                    operation => 'tuple reification',
-                    type      => $!type,
-                    what      => 'index',
-                    key       => $!idx,
-                    value     => $value,
-                ).throw;
-            }
-            KEEP $!idx++;
-            if $value =:= IterationEnd {
-                X::Data::Record::Definite.new(
-                    type  => $!type,
-                    what  => 'index',
-                    key   => $!idx,
-                    value => $field,
-                ).throw if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite;
-                return $field;
-            }
-            if $field ~~ Data::Record::Instance {
-                if $value ~~ Data::Record::Instance {
-                    X::Data::Record::TypeCheck.new(
-                        operation => 'tuple reification',
-                        expected  => $field,
-                        got       => $value,
-                    ).throw without $value;
-                    $value ~~ $field
-                        ?? $value
-                        !! $field.new: $value.record, :subsume
-                } elsif $value ~~ $field.for {
-                    $field.new: $value, :subsume
-                } else {
-                    X::Data::Record::TypeCheck.new(
-                        operation => 'tuple reification',
-                        expected  => $field,
-                        got       => $value,
-                    ).throw;
-                }
-            } elsif $value ~~ $field {
-                $value
-            } else {
-                X::Data::Record::TypeCheck.new(
-                    operation => 'tuple reification',
-                    expected  => $field,
-                    got       => $value,
-                ).throw;
-            }
-        }
+        T.from-iterator: TupleIterator.new: THIS, 'consume', 'tuple reification', @.fields, $original
     }
 
     method subsume(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
-        T.from-iterator: SubsumedTupleIterator.new: THIS, @.fields, $original
-    }
-
-    # Coerces a list. Arity does not matter; missing values are stubbed (if
-    # possible) and extraneous values are stripped. If any values don't typecheck
-    # as their corresponding fields, an exception will be thrown.
-    my class CoercedTupleIterator does TupleIterator {
-        method pull-one(::?CLASS:D: --> Mu) is raw {
-            return IterationEnd if $!done;
-
-            my Mu $field := $!fields.pull-one;
-            my Mu $value := $!values.pull-one;
-            if $field =:= IterationEnd {
-                $!done = True;
-                return IterationEnd;
-            }
-            KEEP $!idx++;
-            if $value =:= IterationEnd {
-                X::Data::Record::Definite.new(
-                    type  => $!type,
-                    what  => 'index',
-                    key   => $!idx,
-                    value => $field,
-                ).throw if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite;
-                return $field;
-            }
-            if $field ~~ Data::Record::Instance {
-                if $value ~~ Data::Record::Instance {
-                    X::Data::Record::TypeCheck.new(
-                        operation => 'tuple reification',
-                        expected  => $field,
-                        got       => $value,
-                    ).throw without $value;
-                    $value ~~ $field
-                        ?? $value
-                        !! $field.new: $value.record, :coerce
-                } elsif $value ~~ $field.for {
-                    $field.new: $value, :coerce
-                } else {
-                    X::Data::Record::TypeCheck.new(
-                        operation => 'tuple reification',
-                        expected  => $field,
-                        got       => $value,
-                    ).throw;
-                }
-            } elsif $value ~~ $field {
-                $value
-            } else {
-                X::Data::Record::TypeCheck.new(
-                    operation => 'tuple reification',
-                    expected  => $field,
-                    got       => $value,
-                ).throw;
-            }
-        }
+        T.from-iterator: TupleIterator.new: THIS, 'subsume', 'tuple reification', @.fields, $original
     }
 
     method coerce(::THIS ::?ROLE:_: ::T List:D $original is raw --> List:D) {
-        T.from-iterator: CoercedTupleIterator.new: THIS, @.fields, $original
+        T.from-iterator: TupleIterator.new: THIS, 'coerce', 'tuple reification', @.fields, $original
     }
 
     method fields(::?ROLE:_: --> List:D) { self.^fields }
