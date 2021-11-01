@@ -1,10 +1,11 @@
 use v6.d;
 use Data::Record::Exceptions;
 use MetamodelX::RecordHOW;
+use MetamodelX::RecorderHOW;
 use MetamodelX::RecordTemplateHOW;
 use Test;
 
-plan 2;
+plan 3;
 
 subtest 'MetamodelX::RecordHOW', {
     plan 10;
@@ -45,27 +46,23 @@ subtest 'MetamodelX::RecordHOW', {
 };
 
 subtest 'MetamodelX::RecordTemplateHOW', {
-    plan 9;
+    plan 8;
 
-    my role Data::Record::Mock[+] {
-        method method() { }
-    }
-    my role Data::Record::Mock[+, Bool:D :$param!] {
-        method method() { }
-    }
+    my class Instance { method method() { } }
 
-    my &body_block := { $_ };
-    sub term:<RecordTemplate> {
-        once MetamodelX::RecordTemplateHOW.new_type:
-            Data::Record::Mock, &body_block, :name<Record>, :param
-    }
-    lives-ok { RecordTemplate }, 'can create new record template types';
+    my Mu \RecordTemplate  = Mu;
+    my    &body_block     := { $_ };
+    lives-ok {
+        RecordTemplate := MetamodelX::RecordTemplateHOW[List].new_type: Instance, &body_block, :name<Record>;
+    }, 'can create new record template types';
 
     ok RecordTemplate.HOW.find_method(RecordTemplate, 'method'),
       'can find methods on record templates, which are those of their delegate';
 
-    sub term:<Record> { once RecordTemplate.^parameterize: 1 }
-    lives-ok { Record }, 'can parameterize record template types';
+    my Mu \Record := Mu;
+    lives-ok {
+        Record := RecordTemplate.^parameterize: 1;
+    }, 'can parameterize record template types';
 
     cmp-ok Record.^template, &[=:=], RecordTemplate,
       'parameterizations have the correct template';
@@ -73,8 +70,6 @@ subtest 'MetamodelX::RecordTemplateHOW', {
       'parameterizations have the correct delegate';
     cmp-ok Record.^fields, &[eqv], (1,),
       'parameterizations have the correct fields';
-    cmp-ok Record.^parameters, &[eqv], Map.new((:param)),
-      'parameterizations have the correct parameters';
 
     ok Metamodel::Primitives.is_type(Record, RecordTemplate),
       'parameterizations typecheck as their template';
@@ -82,4 +77,35 @@ subtest 'MetamodelX::RecordTemplateHOW', {
       'parameterizations typecheck as their delegate';
 };
 
-# vim: ft=perl6 sw=4 ts=4 sts=4 et
+subtest 'MetamodelX::RecorderHOW', {
+    plan 10;
+
+    my class Instance { method fields { self.^fields } }
+
+    my Mu \Named := Mu;
+    my Mu \Anon  := Mu;
+    lives-ok {
+        Anon := MetamodelX::RecorderHOW[List].new_type: Instance, {};
+    }, 'can create a recorder';
+    lives-ok {
+        Named := MetamodelX::RecorderHOW[List].new_type: Instance, {}, :name<Named>;
+    }, 'can create a named recorder';
+
+    is Anon.^name, '<anon record 1>', 'anonymous records generate a name';
+    is Named.^name, 'Named', 'named records have theirs';
+
+    ok Anon.^is_anonymous, 'anonymous records are anonymous';
+    nok Named.^is_anonymous, 'named records are not anonymous';
+
+    lives-ok {
+        Named ~~ -> ::Named $named { $named ~~ -> Named { $named } }
+    }, 'records know their identity';
+    lives-ok {
+        Named ~~ -> Instance { }
+    }, 'records can delegate typechecks';
+    lives-ok {
+        cmp-ok Named.fields, &[=:=], Named.^fields, 'can invoke metamethods on self from a method';
+    }, 'can invoke methods on a record via its delegate';
+};
+
+# vim: ft=raku sw=4 ts=4 sts=4 et
