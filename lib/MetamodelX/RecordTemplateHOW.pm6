@@ -1,35 +1,39 @@
 use v6.d;
 use MetamodelX::RecorderHOW;
 my atomicint $next_id = 1;
-unit role MetamodelX::RecordTemplateHOW[::T]
+unit role MetamodelX::RecordTemplateHOW[MetamodelX::RecorderHOW ::P]
      does Metamodel::Naming;
 
-my $coercer := Metamodel::CoercionHOW.new_type: T, Mu;
+my \F = P.for;
+my \D = P.delegate;
+
+my $coercer := Metamodel::CoercionHOW.new_type: F, Mu;
 
 has Metamodel::Archetypes:D $!archetypes is required;
 has int                     $!id;
-has Mu                      $!delegate   is required;
 has Block:D                 $!body_block is required;
 
 my Metamodel::Archetypes:D constant N-ARCHETYPES .= new: :nominal, :parametric;
 my Metamodel::Archetypes:D constant G-ARCHETYPES .= new: :nominal, :parametric, :generic;
-submethod BUILD(::?CLASS:D: int :$id, Mu :$delegate! is raw, Block:D :$body_block! is raw --> Nil) {
+submethod BUILD(::?ROLE:D: int :$id, Block:D :$body_block! is raw --> Nil) {
     $!id          = $id;
-    $!delegate   := $delegate;
     $!body_block := $body_block;
-    $!archetypes :=
-        $delegate.HOW.archetypes.generic || $body_block.is_generic
-          ?? G-ARCHETYPES
-          !! N-ARCHETYPES;
+    $!archetypes := P.archetypes.generic || $body_block.is_generic ?? G-ARCHETYPES !! N-ARCHETYPES;
 }
 
-proto method archetypes(--> Metamodel::Archetypes:D)  {*}
-multi method archetypes(::?CLASS:U: --> N-ARCHETYPES) { }
-multi method archetypes(::?CLASS:D:)                  { $!archetypes }
+proto method archetypes(--> Metamodel::Archetypes:D) {*}
+multi method archetypes(::?ROLE:U: --> N-ARCHETYPES) { }
+multi method archetypes(::?ROLE:D:)                  { $!archetypes }
 
-method new_type(::?CLASS:_: Mu $delegate is raw, Block:D $body_block is raw, Str :$name --> Mu) {
+method for(::?ROLE:_: Mu $?) { F }
+
+method delegate(::?ROLE:_: Mu $?) { D }
+
+method recorder(::?ROLE:_: Mu $?) { P }
+
+method new_type(::?ROLE:_: Block:D $body_block is raw, Str :$name --> Mu) {
     my int $id   = !$name.DEFINITE && $next_id⚛++;
-    my Mu  $how := self.bless: :$id, :$delegate, :$body_block;
+    my Mu  $how := self.bless: :$id, :$body_block;
     my Mu  $obj := Metamodel::Primitives.create_type: $how, 'Uninstantiable';
     $how.set_name: $obj, $id && "<anon record template $id>" || $name;
     Metamodel::Primitives.configure_type_checking: $obj, (), :!authoritative, :call_accepts;
@@ -37,35 +41,33 @@ method new_type(::?CLASS:_: Mu $delegate is raw, Block:D $body_block is raw, Str
     $obj
 }
 
-method get_attribute_for_usage(::?ROLE:D: $, |meta) { $!delegate.^get_attribute_for_usage: |meta }
+method get_attribute_for_usage(::?ROLE:D: Mu, |meta) { D.^get_attribute_for_usage: |meta }
 
-method attributes(::?ROLE:D: $, |meta) { $!delegate.^attributes: |meta }
+method attributes(::?ROLE:D: Mu, |meta) { D.^attributes: |meta }
 
-method find_method(::?ROLE:D: $, |meta) { $!delegate.^find_method: |meta }
+method find_method(::?ROLE:D: Mu, |meta) { D.^find_method: |meta }
 
-method lookup(::?ROLE:D: $, |meta) { $!delegate.^lookup: |meta }
+method lookup(::?ROLE:D: Mu, |meta) { D.^lookup: |meta }
 
-method methods(::?ROLE:D: $, |meta) { $!delegate.^methods: |meta }
+method methods(::?ROLE:D: Mu, |meta) { D.^methods: |meta }
 
-method roles_to_compose(::?ROLE:D: $, |meta) { $!delegate.^roles_to_compose: |meta }
+method roles_to_compose(::?ROLE:D: Mu, |meta) { D.^roles_to_compose: |meta }
 
-method roles(::?ROLE:D: $, |meta) { $!delegate.^roles: |meta }
+method roles(::?ROLE:D: Mu, |meta) { D.^roles: |meta }
 
-method parents(::?ROLE:D: $, |meta) { $!delegate.^parents: |meta }
+method parents(::?ROLE:D: Mu, |meta) { D.^parents: |meta }
 
-method mro(::?ROLE:D: $, |meta) is raw {
+method mro(::?ROLE:D: Mu, |meta) is raw {
     my $mro := IterationBuffer.new;
-    $mro.push: $_ for $!delegate.^mro: |meta;
+    $mro.push: $_ for D.^mro: |meta;
     $mro
 }
 
-method delegate(::?CLASS:D: Mu) { $!delegate }
+method body_block(::?ROLE:D: Mu --> Block:D) { $!body_block }
 
-method body_block(::?CLASS:D: Mu --> Block:D) { $!body_block }
+method is_anonymous(::?ROLE:D: Mu --> Bool:D) { ?$!id }
 
-method is_anonymous(::?CLASS:D: Mu --> Bool:D) { ?$!id }
-
-method parameterize(::?CLASS:D: Mu $obj is raw, |args) {
+method parameterize(::?ROLE:D: Mu $obj is raw, |args) {
     my $encoded := IterationBuffer.new;
     $encoded.push: %(args) || Nil;
     $encoded.push: $_ for @(args);
@@ -78,32 +80,32 @@ method !do_parameterization(Mu $template is raw, @encoded --> Mu) {
     my @args   := (@encoded.head andthen |*), |@encoded.skip;
     my $fields := $coercer.^coerce: $!body_block(|@args);
     my $name   := self.name($template) ~ '[' ~ @args.map(*.raku).join(', ') ~ ']';
-    MetamodelX::RecorderHOW[T].new_type($!delegate, $fields, :$name, :$template).^compose
+    P.new_type($fields, :$name, :$template).^compose
 }
 
-method is_generic(::?CLASS:D: Mu --> int) {
-    $!delegate.HOW.archetypes.generic || $!body_block.is_generic
+method is_generic(::?ROLE:D: Mu --> int) {
+    P.archetypes.generic || $!body_block.is_generic
 }
 
-method instantiate_generic(::?CLASS:D: Mu $obj is raw, Mu $type_env is raw --> Mu) {
+method instantiate_generic(::?ROLE:D: Mu $obj is raw, Mu $type_env is raw --> Mu) {
     my Str:D    $name        = self.name: $obj;
-    my Mu       $delegate   := $!delegate;
+    my Mu       $delegate   := D;
     my Block:D  $body_block := $!body_block;
     $delegate   := $delegate.^instantiate_generic: $type_env if $delegate.^is_generic;
     $body_block := $body_block.instantiate_generic: $type_env if $body_block.is_generic;
     self.new_type: $delegate, $body_block, :$name
 }
 
-method type_check(::?CLASS:D: Mu $obj is raw is copy, Mu $checkee is raw is copy --> int) {
+method type_check(::?ROLE:D: Mu $obj is raw is copy, Mu $checkee is raw is copy --> int) {
     use nqp;
     nqp::eqaddr(($checkee := nqp::decont($checkee)), ($obj := nqp::decont($obj))) # Is it our identity?
-      || nqp::istype_nd($!delegate, $checkee) # Is it like our delegate?
-      || nqp::istype_nd($checkee.HOW, MetamodelX::RecorderHOW[T]) # Is it a parameterization of ours?
+      || nqp::istype_nd(D, $checkee) # Is it like our delegate?
+      || nqp::istype_nd($checkee.HOW, P) # Is it a parameterization of ours?
         && nqp::eqaddr($checkee.^template, $obj)
 }
 
-method accepts_type(::?CLASS:D: Mu $obj is raw, Mu $chcekee is raw --> int) {
+method accepts_type(::?ROLE:D: Mu $obj is raw, Mu $chcekee is raw --> int) {
     use nqp;
-    nqp::istype_nd($chcekee.HOW, MetamodelX::RecorderHOW[T])
+    nqp::istype_nd($chcekee.HOW, P)
       && nqp::eqaddr($chcekee.^template, nqp::decont($obj))
 }

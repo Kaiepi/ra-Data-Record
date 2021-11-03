@@ -5,44 +5,37 @@ use MetamodelX::RecorderHOW;
 use MetamodelX::RecordTemplateHOW;
 use Test;
 
-plan 3;
+plan 2;
 
-subtest 'MetamodelX::RecordHOW', {
+subtest 'MetamodelX::RecorderHOW', {
     plan 10;
 
-    sub term:<Record> { once MetamodelX::RecordHOW.new_type: :name<Record> }
-    lives-ok { Record }, 'can create new record types';
+    my class Instance { method fields { self.^fields } }
+
+    my Mu \Named := Mu;
+    my Mu \Anon  := Mu;
     lives-ok {
-        Record.HOW.set_template: Record, Mu
-    }, 'can set record templates before composition';
+        Anon := MetamodelX::RecorderHOW[List, Instance].new_type: Empty;
+    }, 'can create a recorder';
     lives-ok {
-        Record.HOW.set_delegate: Record, role { }
-    }, 'can set record delegates before composition';
+        Named := MetamodelX::RecorderHOW[List, Instance].new_type: Empty, :name<Named>;
+    }, 'can create a named recorder';
+
+    is Anon.^name, '<anon record 1>', 'anonymous records generate a name';
+    is Named.^name, 'Named', 'named records have theirs';
+
+    ok Anon.^is_anonymous, 'anonymous records are anonymous';
+    nok Named.^is_anonymous, 'named records are not anonymous';
+
     lives-ok {
-        Record.HOW.set_fields: Record
-    }, 'can set record fields before composition';
+        Named ~~ -> ::Named $named { $named ~~ -> Named { $named } }
+    }, 'records know their identity';
     lives-ok {
-        Record.HOW.set_parameters: Record
-    }, 'can set record parameters before composition';
+        Named ~~ -> Instance { }
+    }, 'records can delegate typechecks';
     lives-ok {
-        Record.HOW.compose: Record
-    }, 'can compose record types';
-    throws-like {
-        Record.HOW.set_template: Record, Mu
-    }, X::Data::Record::Composed,
-      'cannot set record templates after composition';
-    throws-like {
-        Record.HOW.set_delegate: Record, role { }
-    }, X::Data::Record::Composed,
-      'cannot set record delegates after composition';
-    throws-like {
-        Record.HOW.set_fields: Record
-    }, X::Data::Record::Composed,
-      'cannot set record fields after composition';
-    throws-like {
-        Record.HOW.set_parameters: Record
-    }, X::Data::Record::Composed,
-      'cannot set record parameters after composition';
+        cmp-ok Named.fields, &[=:=], Named.^fields, 'can invoke metamethods on self from a method';
+    }, 'can invoke methods on a record via its delegate';
 };
 
 subtest 'MetamodelX::RecordTemplateHOW', {
@@ -50,10 +43,13 @@ subtest 'MetamodelX::RecordTemplateHOW', {
 
     my class Instance { method method() { } }
 
+    my class Protocol does MetamodelX::RecorderHOW[List, Instance] { }
+
     my Mu \RecordTemplate  = Mu;
     my    &body_block     := { $_ };
     lives-ok {
-        RecordTemplate := MetamodelX::RecordTemplateHOW[List].new_type: Instance, &body_block, :name<Record>;
+        RecordTemplate :=
+            MetamodelX::RecordTemplateHOW[Protocol].new_type: &body_block, :name<Record>;
     }, 'can create new record template types';
 
     ok RecordTemplate.HOW.find_method(RecordTemplate, 'method'),
@@ -75,37 +71,6 @@ subtest 'MetamodelX::RecordTemplateHOW', {
       'parameterizations typecheck as their template';
     ok Metamodel::Primitives.is_type(Record, RecordTemplate.^delegate),
       'parameterizations typecheck as their delegate';
-};
-
-subtest 'MetamodelX::RecorderHOW', {
-    plan 10;
-
-    my class Instance { method fields { self.^fields } }
-
-    my Mu \Named := Mu;
-    my Mu \Anon  := Mu;
-    lives-ok {
-        Anon := MetamodelX::RecorderHOW[List].new_type: Instance, {};
-    }, 'can create a recorder';
-    lives-ok {
-        Named := MetamodelX::RecorderHOW[List].new_type: Instance, {}, :name<Named>;
-    }, 'can create a named recorder';
-
-    is Anon.^name, '<anon record 1>', 'anonymous records generate a name';
-    is Named.^name, 'Named', 'named records have theirs';
-
-    ok Anon.^is_anonymous, 'anonymous records are anonymous';
-    nok Named.^is_anonymous, 'named records are not anonymous';
-
-    lives-ok {
-        Named ~~ -> ::Named $named { $named ~~ -> Named { $named } }
-    }, 'records know their identity';
-    lives-ok {
-        Named ~~ -> Instance { }
-    }, 'records can delegate typechecks';
-    lives-ok {
-        cmp-ok Named.fields, &[=:=], Named.^fields, 'can invoke metamethods on self from a method';
-    }, 'can invoke methods on a record via its delegate';
 };
 
 # vim: ft=raku sw=4 ts=4 sts=4 et
