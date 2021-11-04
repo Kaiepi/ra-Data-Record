@@ -169,15 +169,14 @@ class Data::Record::Tuple does Data::Record::Instance[List] does Iterable does P
 
     method record(::?CLASS:D: --> List:D) { @!record }
 
-    method unrecord(::?CLASS:D: --> List:D) {
-        @!record.WHAT.from-iterator: @!record.map(&unrecord).iterator
-    }
-    proto sub unrecord(Mu --> Mu) {*}
-    multi sub unrecord(Data::Record::Instance:D \recorded --> Mu) {
-        recorded.unrecord
-    }
-    multi sub unrecord(Mu \value --> Mu) is raw {
-        value
+    do { # hide this sub
+        proto sub unrecord(Mu)                                 {*}
+        multi sub unrecord(Data::Record::Instance:D \recorded) { recorded.unrecord }
+        multi sub unrecord(Mu \value) is raw                   { value }
+
+        method unrecord(::?CLASS:D: --> List:D) {
+            @!record.WHAT.from-iterator: @!record.map(&unrecord).iterator
+        }
     }
 
     multi method raku(::?CLASS:U: --> Str:D) {
