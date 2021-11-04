@@ -180,7 +180,7 @@ class Data::Record::Tuple does Data::Record::Instance[List] does Iterable does P
     }
 
     multi method raku(::?CLASS:U: --> Str:D) {
-        my Str:D $raku = '<@ ' ~ @.fields.map(*.raku).join(', ') ~ ' @>';
+        my Str:D $raku = '<@ ' ~ self.^fields.map(*.raku).join(', ') ~ ' @>';
         my Str:D $name = self.^name;
         $raku ~= ":name('$name')" unless $name eq MetamodelX::RecordHOW::ANON_NAME;
         $raku
