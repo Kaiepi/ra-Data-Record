@@ -1,154 +1,216 @@
 use v6.d;
 use MetamodelX::RecordHOW;
+use MetamodelX::RecorderHOW;
 use MetamodelX::RecordTemplateHOW;
 use Data::Record::Instance;
 use Data::Record::Exceptions;
 
-role Data::Record::Map[Bool:D :$structural! where !*]
-     does Data::Record::Instance[Map]
-     does Iterable
-     does Associative
-{
-    has %!record;
+class Data::Record::Map { ... }
 
-    submethod BUILD(::?ROLE:D: :%record! --> Nil) {
-        %!record := %record;
+role MetamodelX::RecordHOW[Data::Record::Map ::D] does MetamodelX::RecorderHOW[Map, D] {
+    has Bool() $!structural   is built = False;
+    has Str:D  $!drop_default = $!structural ?? 'none' !! 'unbounded'; # FIXME: Inverted??? Come on.
+
+    method structural(::?CLASS:D: $type is raw) { $!structural }
+
+    method get_field(::?CLASS:D: $type is raw, Mu $key is raw) {
+        self.fields($type).AT-KEY($key)
     }
 
-    multi method new(::?ROLE:_: Map:D $original is raw --> ::?ROLE:D) {
+    method type_check_field($type is raw, Mu $key is raw, Mu $field is raw, Mu $value is raw) is raw {
+        Metamodel::Primitives.is_type($value, Data::Record::Instance:U) || !$field.ACCEPTS($value)
+          ?? self.fail_type_check($type, $key, $field, $value)
+          !! $value
+    }
+
+    method fail_type_check($type is raw, Mu $key is raw, Mu $field is raw, Mu $value is raw) is raw {
+        X::Data::Record::TypeCheck.new(:$*operation, :expected($field), :got($value)).throw;
+        $value
+    }
+
+    method map_field($type is raw, Mu $key is raw, Mu $value is raw, :$drop = $!drop_default) {
+        my $fields := self.fields: $type;
+        $fields.EXISTS-KEY($key)
+          ?? self.type_check_field($type, $key, $fields.AT-KEY($key), $value)
+          !! self."drop_$drop"($type, $key, $value)
+    }
+
+    method map_to_field($type is raw, Mu $key is raw, Map:D $values is raw, :$drop = $!drop_default, :$keep!) is raw {
+        my $fields := self.fields: $type;
+        $fields.EXISTS-KEY($key)
+          ?? $values.EXISTS-KEY($key)
+            ?? self.type_check_field($type, $key, $fields.AT-KEY($key), $values.AT-KEY($key))
+            !! self."keep_$keep"($type, $key, $fields.AT-KEY($key))
+          !! self."drop_$drop"($type, $key, $values.AT-KEY($key))
+    }
+
+    method drop_none($type is raw, Mu $key is raw, Mu $value is raw) is raw {
+        $value
+    }
+
+    method drop_unbounded($type is raw, Mu $key is raw, Mu $value is raw) {
+        X::Data::Record::OutOfBounds.new(:$type, :what<key>, :$key).throw;
+        $value
+    }
+
+    method drop_more($type is raw, Mu $key is raw, Mu $value is raw) is raw {
+        X::Data::Record::Extraneous.new(:$*operation, :$type, :what<key>, :$key, :$value).throw;
+        $value
+    }
+
+    method drop_again($type is raw, Mu $key is raw, Mu $value is raw) is raw {
+        next;
+        $value
+    }
+
+    method keep_none($type is raw, Mu $key is raw, Mu $field is raw --> Empty) { }
+
+    method keep_missing($type is raw, Mu $key is raw, Mu $field is raw) {
+        X::Data::Record::Missing.new(:$*operation, :$type, :what<key>, :$key, :$field).throw;
+        self.keep_coercing: $type, $key, $field
+    }
+
+    method keep_coercing($type is raw, Mu $key is raw, Mu $field is raw) {
+        X::Data::Record::Definite.new(:$type, :what<index>, :$key, :value($field)).throw
+            if Metamodel::Primitives.is_type($field.HOW, Metamodel::DefiniteHOW) && $field.^definite;
+        $field
+    }
+}
+
+my class MapIterator does PredictiveIterator {
+    has Mu         $.type      is required;
+    has Str:D      $.mode      is required;
+    has Str:D      $.operation is required;
+    has Map:D      $.values    is required;
+    has Iterator:D $!keys      is required;
+    has Int:D      $.arity     is required;
+
+    submethod BUILD(::?CLASS:D: :$type! is raw, Str:D :$meta!, Str:D :$mode!, :$!operation!, :$values! is raw --> Nil) {
+        my $keys := $type.^fields.keys ∪ $values.keys;
+        $!type   := $type;
+        $!values := $values;
+        $!mode   := "$mode\-$meta";
+        $!keys   := $keys.keys.iterator;
+        $!arity  := $keys.elems;
+    }
+
+    method new(::?CLASS:_: $type is raw, $meta, $mode, $operation, $values is raw --> ::?CLASS:D) {
+        self.bless: :$type, :$meta, :$mode, :$operation, :$values
+    }
+
+    method pull-one(::?CLASS:D:) is raw {
+        my $*operation = $!operation;
+        self."$!mode"()
+    }
+
+    method is-lazy(::?CLASS:D: --> False) { }
+
+    method count-only(::?CLASS:D: --> Int:D) { $!arity }
+
+    method map-one-pair(::?CLASS:D: *%named) is raw {
+        my $key := $!keys.pull-one;
+        $key =:= IterationEnd ?? $key !! ($key => $!type.^map_to_field: $key, $!values, |%named)
+    }
+
+    method wrap-structured(::?CLASS:D:) is raw {
+        self.map-one-pair: :drop<more>, :keep<missing>
+    }
+    method consume-structured(::?CLASS:D:) is raw {
+        loop { return-rw self.map-one-pair: :drop<again>, :keep<missing> }
+    }
+    method subsume-structured(::?CLASS:D:) is raw {
+        self.map-one-pair: :drop<more>, :keep<coercing>
+    }
+    method coerce-structured(::?CLASS:D:) is raw {
+        loop { return-rw self.map-one-pair: :drop<again>, :keep<coercing> }
+    }
+
+    method wrap-unstructured(::?CLASS:D:) is raw {
+        self.map-one-pair: :drop<none>, :keep<missing>
+    }
+    method consume-unstructured(::?CLASS:D:) is raw {
+        self.map-one-pair: :drop<none>, :keep<missing>
+    }
+    method subsume-unstructured(::?CLASS:D:) is raw {
+        self.map-one-pair: :drop<none>, :keep<coercing>
+    }
+    method coerce-unstructured(::?CLASS:D:) is raw {
+        self.map-one-pair: :drop<none>, :keep<coercing>
+    }
+
+    method wrap-bounded(::?CLASS:D:) is raw {
+        self.map-one-pair: :keep<none>
+    }
+    method consume-bounded(::?CLASS:D:) is raw {
+        self.map-one-pair: :keep<none>
+    }
+    method subsume-bounded(::?CLASS:D:) is raw {
+        self.map-one-pair: :keep<none>
+    }
+    method coerce-bounded(::?CLASS:D:) is raw {
+        self.map-one-pair: :keep<none>
+    }
+}
+
+class Data::Record::Map does Data::Record::Instance[Map] does Iterable does Associative {
+    has %.record is required is built(:bind);
+
+    multi method new(::?CLASS:_: Map:D $original is raw --> ::?CLASS:D) {
         my %record := self.wrap: $original;
         self.bless: :%record
     }
-    multi method new(::?ROLE:_: Map:D $original is raw, Bool:D :consume($)! where ?* --> ::?ROLE:D) {
+    multi method new(::?CLASS:_: Map:D $original is raw, Bool:D :consume($)! where ?* --> ::?CLASS:D) {
         my %record := self.consume: $original;
         self.bless: :%record
     }
-    multi method new(::?ROLE:_: Map:D $original is raw, Bool:D :subsume($)! where ?* --> ::?ROLE:D) {
+    multi method new(::?CLASS:_: Map:D $original is raw, Bool:D :subsume($)! where ?* --> ::?CLASS:D) {
         my %record := self.subsume: $original;
         self.bless: :%record
     }
-    multi method new(::?ROLE:_: Map:D $original is raw, Bool:D :coerce($)! where ?* --> ::?ROLE:D) {
+    multi method new(::?CLASS:_: Map:D $original is raw, Bool:D :coerce($)! where ?* --> ::?CLASS:D) {
         my %record := self.coerce: $original;
         self.bless: :%record
     }
 
-    method wrap(::THIS ::?ROLE:_: Map:D $original is raw --> Map:D) {
-        my %fields := %.fields;
-        $original.new: gather for ($original.keys ∪ %fields.keys).keys -> Mu $key is raw {
-            X::Data::Record::Extraneous.new(
-                operation => 'map reification',
-                type      => THIS,
-                what      => 'key',
-                key       => $key,
-                value     => $original{$key},
-            ).throw unless %fields{$key}:exists;
-            X::Data::Record::Missing.new(
-                operation => 'map reification',
-                type      => THIS,
-                what      => 'key',
-                key       => $key,
-                field     => %fields{$key},
-            ).throw unless $original{$key}:exists;
-            self!field-op: 'map reification', {
-                take-rw $key => $_
-            }, %fields{$key}, $original{$key};
+    method wrap(::THIS ::?CLASS:_: Map:D $original is raw --> Map:D) {
+        my $meta := self.^structural ?? 'unstructured' !! 'structured';
+        $original.new: List.from-iterator: MapIterator.new: THIS, $meta, 'wrap', 'map reification', $original
+    }
+
+    method consume(::THIS ::?CLASS:_: Map:D $original is raw --> Map:D) {
+        my $meta := self.^structural ?? 'unstructured' !! 'structured';
+        $original.new: List.from-iterator: MapIterator.new: THIS, $meta, 'consume', 'map reification', $original
+    }
+
+    method subsume(::THIS ::?CLASS:_: Map:D $original is raw --> Map:D) {
+        my $meta := self.^structural ?? 'unstructured' !! 'structured';
+        $original.new: List.from-iterator: MapIterator.new: THIS, $meta, 'subsume', 'map reification', $original
+    }
+
+    method coerce(::THIS ::?CLASS:_: Map:D $original is raw --> Map:D) {
+        my $meta := self.^structural ?? 'unstructured' !! 'structured';
+        $original.new: List.from-iterator: MapIterator.new: THIS, $meta, 'coerce', 'map reification', $original
+    }
+
+    method fields(::?CLASS:_: --> Map:D) { self.^fields }
+
+    method structural(::?CLASS:_: --> Bool:D) { self.^structural }
+
+    do { # hide this sub
+        proto sub unrecord(Mu \key, Mu --> Pair:D)                 { (key) => {*} }
+        multi sub unrecord(Mu, Data::Record::Instance:D \recorded) { recorded.unrecord }
+        multi sub unrecord(Mu, Mu \value)                          { value }
+
+        method unrecord(::?CLASS:D: --> Map:D) {
+            %!record.new: %!record.kv.map: &unrecord
         }
-    }
-
-    method consume(::THIS ::?ROLE:_: Map:D $original is raw --> Map:D) {
-        my %fields := %.fields;
-        $original.new: gather for ($original.keys ∪ %fields.keys).keys -> Mu $key is raw {
-            next unless %fields{$key}:exists;
-            X::Data::Record::Missing.new(
-                operation => 'map reification',
-                type      => THIS,
-                what      => 'key',
-                key       => $key,
-                field     => %fields{$key},
-            ).throw unless $original{$key}:exists;
-            self!field-op: 'map reification', {
-                take-rw ($key => $_)
-            }, %fields{$key}, $original{$key}, :consume;
-        }
-    }
-
-    method subsume(::THIS ::?ROLE:_: Map:D $original is raw --> Map:D) {
-        my %fields := %.fields;
-        $original.new: gather for ($original.keys ∪ %fields.keys).keys -> Mu $key is raw {
-            X::Data::Record::Extraneous.new(
-                operation => 'map reification',
-                type      => THIS,
-                what      => 'key',
-                key       => $key,
-                value     => $original{$key},
-            ).throw unless %fields{$key}:exists;
-
-            my Mu $field := %fields{$key};
-            if $original{$key}:exists {
-                my Mu $value := $original{$key};
-                self!field-op: 'map reification', {
-                    take-rw ($key => $_)
-                }, $field, $value, :subsume;
-            } elsif $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
-                X::Data::Record::Definite.new(
-                    type  => THIS,
-                    what  => 'key',
-                    key   => $key,
-                    value => $field,
-                ).throw;
-            } else {
-                take-rw ($key => $field);
-            }
-        }
-    }
-
-    method coerce(::THIS ::?ROLE:_: Map:D $original is raw --> Map:D) {
-        my %fields := %.fields;
-        $original.new: gather for ($original.keys ∪ %fields.keys).keys -> Mu $key is raw {
-            next unless %fields{$key}:exists;
-
-            my Mu $field := %fields{$key};
-            if $original{$key}:exists {
-                my Mu $value := $original{$key};
-                self!field-op: 'map reification', {
-                    take-rw ($key => $_)
-                }, $field, $value, :coerce;
-            } elsif $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite {
-                X::Data::Record::Definite.new(
-                    type  => THIS,
-                    what  => 'key',
-                    key   => $key,
-                    value => $field,
-                ).throw;
-            } else {
-                take-rw ($key => $field);
-            }
-        }
-    }
-
-    method fields(::?ROLE:_: --> Map:D) {
-        state Map:_ $fields;
-        $fields := self.^fields.Map without $fields;
-        $fields
-    }
-
-    method record(::?ROLE:D: --> Map:D) { %!record }
-
-    method unrecord(::?ROLE:D: --> Map:D) {
-        %!record.new: %!record.kv.map: &unrecord
-    }
-    proto sub unrecord(Mu, Mu --> Pair:D) {*}
-    multi sub unrecord(Mu \key, Data::Record::Instance:D \recorded --> Pair:D) is default {
-        (key) => recorded.unrecord
-    }
-    multi sub unrecord(Mu \key, Mu \value --> Pair:D) {
-        (key) => value
     }
 
     multi method raku(::?CLASS:U: --> Str:D) {
         my Str:D $raku = '{@ ' ~ %.fields.map(*.raku).join(', ') ~ ' @}';
         my Str:D $name = self.^name;
-        $raku ~= ":name('$name')" unless $name eq MetamodelX::RecordHOW::ANON_NAME;
+        $raku ~= ':structural' if self.^structural;
+        $raku ~= ":name('$name')" unless self.^is_anonymous;
         $raku
     }
 
@@ -161,437 +223,69 @@ role Data::Record::Map[Bool:D :$structural! where !*]
         True
     }
 
-    method EXISTS-KEY(::?ROLE:D: Mu $key is raw --> Bool:D) {
-        %!record{$key}:exists
+    method EXISTS-KEY(::?CLASS:D: Mu $key is raw --> Bool:D) {
+        %!record.EXISTS-KEY: $key
     }
 
-    method AT-KEY(::THIS ::?ROLE:D: Mu $key is raw --> Mu) is raw {
-        if %.fields{$key}:!exists {
-            die X::Data::Record::OutOfBounds.new:
-                type => THIS,
-                what => 'key',
-                key  => $key
-        } else {
-            %!record{$key}
-        }
+    method AT-KEY(::THIS ::?CLASS:D: Mu $key is raw) is raw {
+        state $*operation = 'lookup';
+        self.^map_field: $key, %!record.AT-KEY: $key
     }
 
-    method BIND-KEY(::THIS ::?ROLE:D: Mu $key is raw, Mu $value is raw --> Mu) is raw {
-        my %fields := %.fields;
-        if %fields{$key}:!exists {
-            die X::Data::Record::OutOfBounds.new:
-                type => THIS,
-                what => 'key',
-                key  => $key
-        } else {
-            self!field-op: 'binding', {
-                %!record{$key} := $_
-            }, %fields{$key}, $value
-        }
+    method BIND-KEY(::THIS ::?CLASS:D: Mu $key is raw, Mu $value is raw) is raw {
+        state $*operation = 'binding';
+        %!record.BIND-KEY: $key, self.^map_field: $key, $value
     }
 
-    method ASSIGN-KEY(::THIS ::?ROLE:D: Mu $key is raw, Mu $value is raw --> Mu) is raw {
-        my %fields := %.fields;
-        if %fields{$key}:!exists {
-            die X::Data::Record::OutOfBounds.new:
-                type => THIS,
-                what => 'key',
-                key  => $key
-        } else {
-            self!field-op: 'assignment', {
-                %!record{$key} = $_
-            }, %fields{$key}, $value
-        }
+    method ASSIGN-KEY(::THIS ::?CLASS:D: Mu $key is raw, Mu $value is raw) is raw {
+        state $*operation = 'assignment';
+        %!record.ASSIGN-KEY: $key, self.^map_field: $key, $value
     }
 
-    method DELETE-KEY(::THIS ::?ROLE:D: Mu --> Mu) {
-        X::Data::Record::Immutable.new(
-            operation => 'deletion',
-            type      => THIS
-        ).throw;
-    }
-
-    # An iterator that wraps the list of values passed to Hash array ops
-    # (push/append).
-    #
-    # "But this never returns anything besides IterationEnd on pull? What's the
-    # point of this?"
-    #
-    # Hash array methods have exceptions of their own that they can fail with.
-    # The point of this is to ensure typechecking gets deferred until Hash's
-    # methods iterate over this so those get handled properly.
-    my role ArrayIterator does Iterator {
-        has Mu         $!type   is required;
-        has            %!record is required;
-        has            %!fields is required;
-        has Iterator:D $!values is required;
-
-        submethod BUILD(::?ROLE:D: Mu :$type! is raw, :%record!, :%fields!, :@values --> Nil) {
-            $!type   := $type;
-            %!record := %record;
-            %!fields := %fields;
-            $!values := @values.iterator;
-        }
-
-        method new(::?ROLE:_: Mu $type is raw, %record, %fields, @values --> ::?ROLE:D) {
-            self.bless: :$type, :%record, :%fields, :@values
-        }
-
-        method pull-one(::?CLASS:D: --> Mu) is raw {
-            my Mu     $key;
-            my Bool:D $has-key = False;
-            until (my Mu $value := $!values.pull-one) =:= IterationEnd {
-                if $has-key {
-                    $has-key = False;
-                    self!pull-one-pair: $key, $value;
-                } elsif $value ~~ Pair:D {
-                    self!pull-one-pair: $value.key, $value.value;
-                } else {
-                    $key     := $value;
-                    $has-key  = True;
-                }
-            }
-            IterationEnd
-        }
-
-        method !pull-one-pair(::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) is raw {
-            if %!fields{$key}:exists {
-                my Mu $field := %!fields{$key};
-                X::Data::Record::TypeCheck.new(
-                    operation => $.operation,
-                    expected  => $field,
-                    got       => $value,
-                ).throw unless $field ~~ Data::Record::Instance[List] | Array;
-                self!perform-array-op: $key, $value
-            } else {
-                die X::Data::Record::OutOfBounds.new:
-                    type => $!type,
-                    what => 'key',
-                    key  => $key
-            }
-        }
-
-        method operation(::?CLASS:D: --> Str:D) { ... }
-
-        method !perform-array-op(::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) { ... }
-
-        method is-lazy(::?CLASS:D: --> Bool:D) { $!values.is-lazy }
-    }
-
-    my class PushIterator does ArrayIterator {
-        method operation(::?CLASS:D: --> 'push') { }
-
-        method !perform-array-op(::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) {
-            %!record{$key}.push: $value
-        }
-    }
-
-    method push(::THIS ::?ROLE:D: +values --> ::?ROLE:D) {
-        %!record.push: Seq.new: PushIterator.new: THIS, %!record, %.fields, values;
-        self
-    }
-
-    my class AppendIterator does ArrayIterator {
-        method operation(::?CLASS:D: --> 'append') { }
-
-        method !perform-array-op(::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) {
-            %!record{$key}.append: |$value
-        }
-    }
-
-    method append(::THIS ::?ROLE:D: +values --> ::?ROLE:D) {
-        %!record.append: Seq.new: AppendIterator.new: THIS, %!record, %.fields, values;
-        self
-    }
-
-    method iterator(::?ROLE:D: --> Mu)  { %!record.iterator }
-    method is-lazy(::?ROLE:D: --> Mu)   { %!record.is-lazy }
-    method list(::?ROLE:D: --> Mu)      { %!record.list }
-    method elems(::?ROLE:D: --> Mu)     { %!record.elems }
-    method cache(::?ROLE:D: --> Mu)     { %!record.cache }
-    method eager(::?ROLE:D: --> Mu)     { %!record.eager }
-    method lazy(::?ROLE:D: --> Mu)      { %!record.lazy }
-    method hash(::?ROLE:D: --> Mu)      { self }
-    method keys(::?ROLE:D: --> Mu)      { %!record.keys }
-    method values(::?ROLE:D: --> Mu)    { %!record.values }
-    method kv(::?ROLE:D: --> Mu)        { %!record.kv }
-    method pairs(::?ROLE:D: --> Mu)     { %!record.pairs }
-    method antipairs(::?ROLE:D: --> Mu) { %!record.antipairs }
-}
-
-role Data::Record::Map[Bool:D :$structural! where ?*]
-     does Data::Record::Instance[Map]
-     does Iterable
-     does Associative
-{
-    has %!record;
-
-    submethod BUILD(::?ROLE:D: :%record! --> Nil) {
-        %!record := %record;
-    }
-
-    multi method new(::?ROLE:_: Map:D $original is raw --> ::?ROLE:D) {
-        my %record := self.wrap: $original;
-        self.bless: :%record
-    }
-    multi method new(::?ROLE:_: Map:D $original is raw, Bool:D :consume($)! where ?* --> ::?ROLE:D) {
-        my %record := self.consume: $original;
-        self.bless: :%record
-    }
-    multi method new(::?ROLE:_: Map:D $original is raw, Bool:D :subsume($)! where ?* --> ::?ROLE:D) {
-        my %record := self.subsume: $original;
-        self.bless: :%record
-    }
-    multi method new(::?ROLE:_: Map:D $original is raw, Bool:D :coerce($)! where ?* --> ::?ROLE:D) {
-        my %record := self.coerce: $original;
-        self.bless: :%record
-    }
-
-    method !strict-coerce(::THIS ::?ROLE:_: Map:D $original is raw, *%named-args --> Map:D) {
-        my %fields := %.fields;
-        $original.new: gather for ($original.keys ∪ %fields.keys).keys -> Mu $key is raw {
-            X::Data::Record::Missing.new(
-                operation => 'map reification',
-                type      => THIS,
-                what      => 'key',
-                key       => $key,
-                field     => %fields{$key},
-            ).throw unless $original{$key}:exists;
-
-            my Mu $value := $original{$key};
-            if %fields{$key}:exists {
-                my Mu $field := %fields{$key};
-                self!field-op: 'map reification', {
-                    take-rw ($key => $_)
-                }, $field, $value, |%named-args;
-            } else {
-                take-rw ($key => $value);
-            }
-        }
-    }
-
-    method wrap(::?ROLE:_: Map:D $original is raw --> Map:D) {
-        self!strict-coerce: $original
-    }
-
-    method consume(::?ROLE:_: Map:D $original is raw --> Map:D) {
-        self!strict-coerce: $original, :consume
-    }
-
-    method !lax-coerce(::THIS ::?ROLE:_: Map:D $original is raw, *%named-args --> Map:D) {
-        my %fields := %.fields;
-        $original.new: gather for ($original.keys ∪ %fields.keys).keys -> Mu $key is raw {
-            if $original{$key}:exists {
-                my Mu $value := $original{$key};
-                if %fields{$key}:exists {
-                    my Mu $field := %fields{$key};
-                    self!field-op: 'map reification', {
-                        take-rw ($key => $_)
-                    }, $field, $value, |%named-args;
-                } else {
-                    take-rw ($key => $value);
-                }
-            } else {
-                my Mu $field := %fields{$key};
-                X::Data::Record::Definite.new(
-                    type  => THIS,
-                    what  => 'key',
-                    key   => $key,
-                    value => $field,
-                ).throw if $field.HOW ~~ Metamodel::DefiniteHOW && $field.^definite;
-                take-rw ($key => $field);
-            }
-        }
-    }
-
-    method subsume(::?ROLE:_: Map:D $original is raw --> Map:D) {
-        self!lax-coerce: $original, :subsume
-    }
-
-    method coerce(::?ROLE:_: Map:D $original is raw --> Map:D) {
-        self!lax-coerce: $original, :coerce
-    }
-
-    method fields(::?ROLE:_: --> Map:D) {
-        state Map:_ $fields;
-        $fields := self.^fields.Map without $fields;
-        $fields
-    }
-
-    method record(::?ROLE:D: --> Map:D) { %!record }
-
-    method unrecord(::?ROLE:D: --> Map:D) {
-        %!record.new: %!record.kv.map: &unrecord
-    }
-    proto sub unrecord(Mu, Mu --> Pair:D) {*}
-    multi sub unrecord(Mu \key, Data::Record::Instance:D \recorded --> Pair:D) is default {
-        (key) => recorded.unrecord
-    }
-    multi sub unrecord(Mu \key, Mu \value --> Pair:D) {
-        (key) => value
-    }
-
-    multi method raku(::?CLASS:U: --> Str:D) {
-        my Str:D $raku = '{@ ' ~ %.fields.map(*.raku).join(', ') ~ ' @}:structural';
-        my Str:D $name = self.^name;
-        $raku ~= ":name('$name')" unless $name eq MetamodelX::RecordHOW::ANON_NAME;
-        $raku
-    }
-
-    multi method ACCEPTS(::?CLASS:U: Map:D $map is raw --> Bool:D) {
-        for %.fields.kv -> Mu $key is raw, Mu $field is raw {
-            return False unless $map{$key}:exists && $map{$key} ~~ $field;
-        }
-        True
-    }
-
-    method EXISTS-KEY(::?ROLE:D: Mu $key is raw --> Bool:D) {
-        %!record{$key}:exists
-    }
-
-    method AT-KEY(::THIS ::?ROLE:D: Mu $key is raw --> Mu) is raw {
-        %!record{$key}
-    }
-
-    method BIND-KEY(::THIS ::?ROLE:D: Mu $key is raw, Mu $value is raw --> Mu) is raw {
-        my %fields := %.fields;
-        if %fields{$key}:exists {
-            self!field-op: 'binding', {
-                %!record{$key} := $_
-            }, %fields{$key}, $value
-        } else {
-            %!record{$key} := $value
-        }
-    }
-
-    method ASSIGN-KEY(::THIS ::?ROLE:D: Mu $key is raw, Mu $value is raw --> Mu) is raw {
-        my %fields := %.fields;
-        if %fields{$key}:exists {
-            self!field-op: 'assignment', {
-                %!record{$key} = $_
-            }, %fields{$key}, $value
-        } else {
-            %!record{$key} = $value
-        }
-    }
-
-    method DELETE-KEY(::THIS ::?ROLE:D: Mu $key is raw --> Mu) is raw {
-        # XXX: Not quite the right exception
+    method DELETE-KEY(::THIS ::?CLASS:D: Mu $key is raw) {
+        # TODO: Maybe it's OK to delete a field if indefinite.
         X::Data::Record::Immutable.new(
             operation => 'deletion',
             type      => THIS,
-        ).throw if %.fields{$key}:exists;
-        %!record{$key}:delete
+        ).throw if self.^fields.EXISTS-KEY: $key;
+        let %!record;
+        state $*operation = 'deletion';
+        self.^map_field: $key, %!record.DELETE-KEY: $key
     }
 
-    # Similar deal to non-structural maps' ArrayIterator, only now we
-    # actually do return values from .pull-one! These are to be
-    # pushed/appended by the record itself, not us.
-    my role ArrayIterator does Iterator {
-        has            %!record is required;
-        has            %!fields is required;
-        has Iterator:D $!values is required;
-
-        submethod BUILD(::?ROLE:D: :%record!, :%fields!, :@values! --> Nil) {
-            %!record := %record;
-            %!fields := %fields;
-            $!values := @values.iterator;
-        }
-
-        method new(::?ROLE:_: %record, %fields, @values --> ::?ROLE:D) {
-            self.bless: :%record, :%fields, :@values
-        }
-
-        method pull-one(::?CLASS:D: --> Mu) is raw {
-            my Mu     $key;
-            my Bool:D $has-key = False;
-            until (my Mu $value := $!values.pull-one) =:= IterationEnd {
-                if $has-key {
-                    $has-key = False;
-                    return self!pull-one-pair: $key, $value;
-                } elsif $value ~~ Pair:D {
-                    return self!pull-one-pair: $value.key, $value.value;
-                } else {
-                    $key     := $value;
-                    $has-key  = True;
-                }
-            }
-            IterationEnd
-        }
-
-        method !pull-one-pair(::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) is raw {
-            if %!fields{$key}:exists {
-                my Mu $field := %!fields{$key};
-                X::Data::Record::TypeCheck.new(
-                    operation => $.operation,
-                    expected  => $field,
-                    got       => $value,
-                ).throw unless $field ~~ Data::Record::Instance[List] | Array;
-                self!perform-array-op: $key, $value;
-                next; # Not so fast, &return!
-            } else {
-                ($key => $value);
-            }
-        }
-
-        method operation(::?CLASS:D: --> Str:D) { ... }
-
-        method !perform-array-op(::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) { ... }
-    }
-
-    my class PushIterator does ArrayIterator {
-        method operation(::?CLASS:D: --> 'push') { }
-
-        method !perform-array-op(::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) {
-            %!record{$key}.push: $value
-        }
-    }
-
-    method push(::?ROLE:D: +values --> ::?ROLE:D) {
-        %!record.push: Seq.new: PushIterator.new: %!record, %.fields, values;
+    method push(::THIS ::?CLASS:D: +@values is raw --> ::?CLASS:D) {
+        MapIterator.new(THIS, 'bounded', 'wrap', 'push', let %!record .= push: @values).sink-all;
         self
     }
 
-    my class AppendIterator does ArrayIterator {
-        method operation(::?CLASS:D: --> 'append') { }
-
-        method !perform-array-op(::?CLASS:D: Mu $key is raw, Mu $value is raw --> Mu) {
-            %!record{$key}.append: |$value
-        }
-    }
-
-    method append(::?ROLE:D: +values --> ::?ROLE:D) {
-        %!record.push: Seq.new: AppendIterator.new: %!record, %.fields, values;
+    method append(::THIS ::?CLASS:D: +@values is raw --> ::?CLASS:D) {
+        MapIterator.new(THIS, 'bounded', 'wrap', 'append', let %!record .= append: @values).sink-all;
         self
     }
+
+    method iterator(::?CLASS:D:)  { %!record.iterator }
+    method is-lazy(::?CLASS:D:)   { %!record.is-lazy }
+    method list(::?CLASS:D:)      { %!record.list }
+    method elems(::?CLASS:D:)     { %!record.elems }
+    method cache(::?CLASS:D:)     { %!record.cache }
+    method eager(::?CLASS:D:)     { %!record.eager }
+    method lazy(::?CLASS:D:)      { %!record.lazy }
+    method hash(::?CLASS:D:)      { self }
+    method keys(::?CLASS:D:)      { %!record.keys }
+    method values(::?CLASS:D:)    { %!record.values }
+    method kv(::?CLASS:D:)        { %!record.kv }
+    method pairs(::?CLASS:D:)     { %!record.pairs }
+    method antipairs(::?CLASS:D:) { %!record.antipairs }
 }
 
-multi sub circumfix:<{@ @}>(Pair:D $pair is raw, Str:_ :$name, Bool:D :$structural = False --> Mu) is export {
-    my Mu $record   := MetamodelX::RecordHOW.new_type: :$name;
-    my Mu $delegate := Data::Record::Map.^parameterize: :$structural;
-    $record.^set_language_version;
-    $record.^set_delegate: $delegate;
-    $record.^set_fields: $pair;
-    $record.^set_parameters: :$structural;
-    $record.^add_role: $delegate;
-    $record.^compose
+multi sub circumfix:<{@ @}>(Map:D $fields, Str:_ :$name, Bool:D :$structural = False) is export {
+    MetamodelX::RecordHOW[Data::Record::Map].new_type($fields<>, :$name, :$structural).^compose
 }
-multi sub circumfix:<{@ @}>(+pairs where pairs.all ~~ Pair:D, Str:_ :$name, Bool:D :$structural = False --> Mu) is export {
-    my Mu $record   := MetamodelX::RecordHOW.new_type: :$name;
-    my Mu $delegate := Data::Record::Map.^parameterize: :$structural;
-    $record.^set_language_version;
-    $record.^set_delegate: $delegate;
-    $record.^set_fields: pairs;
-    $record.^set_parameters: :$structural;
-    $record.^add_role: $delegate;
-    $record.^compose
+multi sub circumfix:<{@ @}>(*@pairs, Str:_ :$name, Bool:D :$structural = False) is export {
+    MetamodelX::RecordHOW[Data::Record::Map].new_type(Map.new(@pairs), :$name, :$structural).^compose
 }
-multi sub circumfix:<{@ @}>(Block:D $block is raw, Str:_ :$name, Bool:D :$structural = False --> Mu) is export {
-    MetamodelX::RecordTemplateHOW.new_type:
-        Data::Record::Map, $block, :$name, :$structural
-}
-multi sub circumfix:<{@ @}>(%not-a-block-wtf, Str:_ :$name, Bool:_ :$structural --> Mu) is export {
-    X::Data::Record::Block.new(type => Data::Record::Map).throw
+multi sub circumfix:<{@ @}>(Block:D $block, Str:_ :$name, Bool:D :$structural = False) is export {
+    MetamodelX::RecordTemplateHOW[MetamodelX::RecordHOW[Data::Record::Map]].new_type: $block, :$name, :$structural
 }
 
 multi sub infix:«(><)»(Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
