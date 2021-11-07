@@ -31,9 +31,9 @@ method delegate(::?ROLE:_: Mu $?) { D }
 
 method recorder(::?ROLE:_: Mu $?) { P }
 
-method new_type(::?ROLE:_: Block:D $body_block is raw, Str :$name --> Mu) {
+method new_type(::?ROLE:_: Block:D $body_block is raw, Str :$name, *%rest) {
     my int $id   = !$name.DEFINITE && $next_id⚛++;
-    my Mu  $how := self.bless: :$id, :$body_block;
+    my Mu  $how := self.bless: |%rest, :$id, :$body_block;
     my Mu  $obj := Metamodel::Primitives.create_type: $how, 'Uninstantiable';
     $how.set_name: $obj, $id && "<anon record template $id>" || $name;
     Metamodel::Primitives.configure_type_checking: $obj, (), :!authoritative, :call_accepts;
@@ -57,7 +57,7 @@ method roles(::?ROLE:D: Mu, |meta) { D.^roles: |meta }
 
 method parents(::?ROLE:D: Mu, |meta) { D.^parents: |meta }
 
-method mro(::?ROLE:D: Mu, |meta) is raw {
+method mro(::?ROLE:D: Mu, |meta) {
     my $mro := IterationBuffer.new;
     $mro.push: $_ for D.^mro: |meta;
     $mro
@@ -73,10 +73,10 @@ method parameterize(::?ROLE:D: Mu $obj is raw, |args) {
     $encoded.push: $_ for @(args);
     Metamodel::Primitives.parameterize_type: $obj, $encoded.Slip
 }
-sub RECORD-PARAMETERIZER(Mu $obj is raw, @encoded --> Mu) {
+sub RECORD-PARAMETERIZER(Mu $obj is raw, @encoded) {
     $obj.HOW!do_parameterization: $obj, @encoded
 }
-method !do_parameterization(Mu $template is raw, @encoded --> Mu) {
+method !do_parameterization(Mu $template is raw, @encoded) {
     my @args   := (@encoded.head andthen |*), |@encoded.skip;
     my $fields := $coercer.^coerce: $!body_block(|@args);
     my $name   := self.name($template) ~ '[' ~ @args.map(*.raku).join(', ') ~ ']';
@@ -87,7 +87,7 @@ method is_generic(::?ROLE:D: Mu --> int) {
     P.archetypes.generic || $!body_block.is_generic
 }
 
-method instantiate_generic(::?ROLE:D: Mu $obj is raw, Mu $type_env is raw --> Mu) {
+method instantiate_generic(::?ROLE:D: Mu $obj is raw, Mu $type_env is raw) {
     my Str:D    $name        = self.name: $obj;
     my Mu       $delegate   := D;
     my Block:D  $body_block := $!body_block;

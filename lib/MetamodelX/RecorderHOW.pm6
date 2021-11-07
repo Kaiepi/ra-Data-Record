@@ -18,10 +18,10 @@ method for(::?ROLE:_: Mu $?) { F }
 method delegate(::?ROLE:_: Mu $?) { D }
 
 my atomicint $next_id = 1;
-method new_type(::?ROLE:_: Mu $fields is raw, Str :$name, Str :$repr, Mu :$template is raw) {
+method new_type(::?ROLE:_: Mu $fields is raw, Str :$name, Mu :$template is raw, *%rest) {
     my int $id   = !$name.DEFINITE && $next_id⚛++;
-    my Mu  $how := self.new: :$id, :$fields, :$template;
-    my Mu  $obj := Metamodel::Primitives.create_type: $how, $repr // 'P6opaque';
+    my Mu  $how := self.new: |%rest, :$id, :$fields, :$template;
+    my Mu  $obj := Metamodel::Primitives.create_type: $how, D.REPR;
     $how.set_name: $obj, $id ?? "<anon record $id>" !! $name<>;
     $obj
 }
