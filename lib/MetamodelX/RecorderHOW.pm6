@@ -1,10 +1,10 @@
 use v6;
 unit role MetamodelX::RecorderHOW[::F, ::D]
      does Metamodel::Naming
-     does Metamodel::REPRComposeProtocol;
+     does Metamodel::REPRComposeProtocol
+     does Metamodel::BaseType;
 
 has int    $!id          is built;
-has F      $!fields      is built(:bind) is required;
 has Mu     $!template    is built(:bind);
 has Bool:D $!is_composed = False;
 
@@ -17,11 +17,14 @@ method for(::?ROLE:_: Mu $?) { F }
 #|[ A class to which to delegate method calls. ]
 method delegate(::?ROLE:_: Mu $?) { D }
 
+# XXX TODO: We can't define $!fields here. In fact, outside of the individual
+# collection HOWs, we shouldn't care about them at all in the MOP.
 my atomicint $next_id = 1;
 method new_type(::?ROLE:_: Mu $fields is raw, Str :$name, Mu :$template is raw, *%rest) {
     my int $id   = !$name.DEFINITE && $next_id⚛++;
-    my Mu  $how := self.new: |%rest, :$id, :$fields, :$template;
+    my Mu  $how := self.new: |%rest, :$fields, :$id, :$template;
     my Mu  $obj := Metamodel::Primitives.create_type: $how, D.REPR;
+    Metamodel::Primitives.configure_type_checking: $obj, ($obj,), :!authoritative, :call_accepts;
     $how.set_name: $obj, $id ?? "<anon record $id>" !! $name<>;
     $obj
 }
@@ -57,10 +60,6 @@ method compose(::?ROLE:D: Mu $obj is raw) {
 #|[ An ID given to anonymous records. ]
 method id(::?ROLE:D: Mu --> int) { $!id }
 
-#|[ A collection of fields for the record. ]
-method fields(::?ROLE:D: Mu) { $!fields }
-#=[ Its type is coupled to the delegate; if a Data::Record::Instance, that's also its type parameter. ]
-
 #|[ An optional record template. ]
 method template(::?ROLE:D: Mu) { $!template }
 
@@ -72,6 +71,10 @@ method is_composed(::?ROLE:D: Mu) { $!is_composed }
 
 method type_check(::?ROLE:D: Mu $obj is raw, Mu $checkee is raw is copy --> int) {
     use nqp;
-    nqp::eqaddr(($checkee := nqp::decont($checkee)), nqp::decont($obj)) # Is it our identity?
-      || nqp::istype_nd(D, $checkee) # Is it like our delegate?
+    nqp::istype_nd(D, $checkee)
+}
+
+method accepts_type(::?ROLE:D: Mu $obj is raw, Mu $checkee is raw is copy --> int) {
+    use nqp;
+    nqp::istype_nd($checkee, D)
 }

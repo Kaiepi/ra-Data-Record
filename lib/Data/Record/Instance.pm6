@@ -1,4 +1,5 @@
 use v6.d;
+use MetamodelX::RecordLifter;
 use Data::Record::Exceptions;
 unit role Data::Record::Instance[::T];
 
@@ -48,9 +49,12 @@ multi method gist(::?CLASS:D: --> Str:D) { self.record.gist }
 # multi method raku(::?CLASS:U: --> Str:D) { ... }
 multi method raku(::?CLASS:D: --> Str:D) { self.^name ~ '.new(' ~ self.record.raku ~ ')' }
 
-multi method ACCEPTS(::?CLASS:_: ::?CLASS:U --> True) { }
-# multi method ACCEPTS(::?CLASS:U: T:D --> Bool:D)      { ... }
-multi method ACCEPTS(::?CLASS:D: |args --> Bool:D)    { self.record.ACCEPTS: |args }
+proto method ACCEPTS(Mu: Mu) {*}
+multi method ACCEPTS(::?CLASS:_: Mu \topic) is raw {
+    Metamodel::Primitives.is_type(topic, T) or
+        Metamodel::Primitives.is_type(topic, $?CLASS) and
+        self.HOW =:= topic.HOW || self.fields.ACCEPTS(topic.fields)
+}
 
 #|[ Handles an operation on a field of the record given a callback accepting a
     value to perform the operation with. Typechecking and coercion of data
@@ -63,7 +67,7 @@ method !field-op(
     Mu     $value      is raw,
           *%named-args
     --> Mu
-) is raw {
+) is raw #`[is DEPRECATED] {
     if $field ~~ Data::Record::Instance {
         if $value ~~ Data::Record::Instance {
             if $value.DEFINITE {

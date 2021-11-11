@@ -1,66 +1,79 @@
-use v6.d;
+use v6.e.PREVIEW;
 use MetamodelX::RecordHOW;
 use MetamodelX::RecorderHOW;
 use MetamodelX::RecordTemplateHOW;
+use MetamodelX::RecordLifter;
+use Data::Record::Mode;
 use Data::Record::Instance;
 use Data::Record::Exceptions;
 
 class Data::Record::List { ... }
 
-role MetamodelX::RecordHOW[Data::Record::List ::D] does MetamodelX::RecorderHOW[List, D] {
-    method get_field(::?CLASS:D: $type is raw, Mu $key is raw) {
-        my $fields := self.fields($type);
-        $fields.AT-POS: $key % $fields.elems
+role MetamodelX::RecordHOW[List ::F, Data::Record::List ::D] does MetamodelX::RecorderHOW[F, D] {
+    my constant Lifter = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
+
+    has $!fields is built(:bind) is required;
+
+    method new(::?CLASS:_: F :$fields! is raw, *%named) {
+        sink $fields.elems; # Reify, throwing any laziness failures.
+        self.bless: |%named, :$fields
     }
 
+    method fields(::?CLASS:D: $?) { $!fields }
+
     method arity(::?CLASS:D: $type is raw --> Int:D) {
-        self.fields($type).elems
+        $!fields.elems
+    }
+
+    method get_field(::?CLASS:D: $type is raw, $key is raw) {
+        $!fields.AT-POS: $key % $!fields.elems
+    }
+
+    method declares_field(::?CLASS:D: $type is raw, $key is raw) {
+        $!fields.EXISTS-POS: $key % $!fields.elems
     }
 
     method enforce_singleton($type is raw, Str:D $operation --> Nil) {
         X::Data::Record::Missing.new(
             :$operation, :$type, :what<index>, :key(0), :field(self.get_field: $type, 0)
-        ).throw unless self.arity($type) == 1;
+        ).throw unless $!fields.elems == 1;
     }
 
-    method coerce_void($type is raw, Mu $pos is raw, Mu $field is raw) {
+    method coerce_void($type is raw, $key is raw) {
+        my $field := self.get_field: $type, $key;
         X::Data::Record::Definite.new(
-           :$type, :what<index>, :key($pos % self.arity: $type), :value($field)
-        ).throw if Metamodel::Primitives.is_type($field.HOW, Metamodel::DefiniteHOW) && $field.^definite;
+           :$type, :what<index>, :key($key % $!fields.elems), :value($field)
+        ).throw if $field.HOW.archetypes.definite && $field.^definite;
         $field
     }
 
-    method map_field($type is raw, Mu $key is raw, Mu $field is raw, Mu $value is raw, :$drop = 'now') is raw {
-        Metamodel::Primitives.is_type($value, Data::Record::Instance:U) || !$field.ACCEPTS($value)
-          ?? self."drop_it_$drop"($type, $key, $field, $value)
-          !! $value
+    method map_field($type is raw, $key is raw, Mu $value is raw, :$mode = WRAP, :$drop = 'now') is raw {
+        $!fields.EXISTS-POS($key % $!fields.elems)
+          ?? Lifter.lift($!fields.AT-POS($key % $!fields.elems), $value, :$mode)
+          !! self."drop_$drop"($type, $key, $value)
     }
 
-    method map_it_field($type is raw, Int:D $pos is raw, Mu $field is raw, Mu $value is raw, :$keep!, :$drop!) is raw {
+    method map_it_field($type is raw, $key is raw, Mu $field is raw, Mu $value is raw, :$mode!, :$keep!, :$drop!) is raw {
         $value =:= IterationEnd
-          ?? self."keep_it_$keep"($type, $pos, $field, $value, :$drop)
-          !! self.map_field($type, $pos, $field, $value, :$drop)
+          ?? self."keep_it_$keep"($type, $key, $field)
+          !! Lifter.lift($field, $value, :$mode)
     }
 
-    method keep_it_missing($type is raw, Mu $pos is raw, Mu $field is raw, Mu $value is raw, :$drop! --> IterationEnd) {
-        my $arity := self.arity: $type;
+    method keep_it_missing($type is raw, $key is raw, Mu $field is raw --> IterationEnd) {
         X::Data::Record::Missing.new(
-            :$*operation, :$type, :what<index>, :key($pos % $arity), :$field
-        ).throw unless $pos %% $arity;
+            :$*operation, :$type, :what<index>, :key($key % $!fields.elems), :$field
+        ).throw unless $key %% $!fields.elems;
     }
 
-    method keep_it_coercing($type is raw, Mu $pos is raw, Mu $field is raw, Mu $value is raw) {
-        my $arity := self.arity: $type;
-        $pos %% $arity
+    method keep_it_coercing($type is raw, $key is raw, Mu $field is raw) {
+        $key %% $!fields.elems
           ?? IterationEnd
-          !! self.coerce_void($type, $pos, $field)
+          !! self.coerce_void($type, $key)
     }
 
-    method drop_it_now($type is raw, Mu $key is raw, Mu $field is raw, Mu $value is raw --> IterationEnd) {
-        X::Data::Record::TypeCheck.new(:$*operation, :expected($field), :got($value)).throw
-    }
+    method drop_it_now($type is raw, $key is raw, Mu $value is raw --> IterationEnd) { }
 
-    method drop_it_again($type is raw, Mu $key is raw, Mu $field is raw, Mu $value is raw --> IterationEnd) {
+    method drop_it_again($type is raw, $key is raw, Mu $value is raw --> IterationEnd) {
         next
     }
 }
@@ -69,27 +82,27 @@ role MetamodelX::RecordHOW[Data::Record::List ::D] does MetamodelX::RecorderHOW[
     typecheck the list's values and coerce any of them that correspond to fields
     that are records in some manner. ]
 my class ListIterator does Iterator {
-    has Mu         $.type      is required;
-    has Str:D      $.mode      is required;
-    has Str:D      $.operation is required;
-    has Iterator:D $.fields    is required;
-    has Iterator:D $.values    is required;
-    has Int:D      $.arity     is required;
-    has Int:D      $.count     = 0;
+    has Data::Record::List:U $.type      is required;
+    has Data::Record::Mode:D $.mode      is required;
+    has Str:D                $.operation is required;
+    has Iterator:D           $!keys      is required;
+    has Iterator:D           $!fields    is required;
+    has Iterator:D           $!values    is required;
 
-    submethod BUILD(::?CLASS:D: :$!type! is raw, :$!mode!, :$!operation!, :$fields!, :$values! --> Nil) {
-        $!fields := (|$fields xx *).iterator;
+    submethod BUILD(::?CLASS:D: :$type! is raw, :$!mode!, :$!operation!, :$values! --> Nil) {
+        $!type   := $type;
+        $!keys   := (0..*).iterator;
+        $!fields := (|$type.^fields xx *).iterator;
         $!values := $values.iterator;
-        $!arity  := $fields.elems;
     }
 
-    method new(::?CLASS:_: $type is raw, $mode, $operation, $fields, $values --> ::?CLASS:D) {
-        self.bless: :$type, :$mode, :$operation, :$fields, :$values
+    method new(::?CLASS:_: $type is raw, $mode, $operation, $values --> ::?CLASS:D) {
+        self.bless: :$type, :$mode, :$operation, :$values
     }
 
     method pull-one(::?CLASS:D:) is raw {
         my $*operation := $!operation;
-        self."$!mode"($!fields.pull-one)
+        self."$!mode"()
     }
 
     method is-lazy(::?CLASS:D: --> Bool:D) {
@@ -100,18 +113,18 @@ my class ListIterator does Iterator {
         thrown; if the arity of the list does not match that of the record, it
         will be considered to have missing fields and thus an exception will be
         thrown. ]
-    method wrap(::?CLASS:D: Mu $field is raw) is raw {
-        LEAVE $!count++;
-        $!type.^map_it_field: $!count, $field, $!values.pull-one, :keep<missing>, :drop<now>
+    method wrap(::?CLASS:D:) is raw {
+        $!type.^map_it_field:
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one, :$!mode, :keep<missing>, :drop<now>
     }
 
     #|[ Any fields that do not typecheck will be stripped from the list, but if
         the arity of the list does not match that of the record, it will be
         considered to have missing fields and thus an exception will be thrown. ]
-    method consume(::?CLASS:D: Mu $field is raw) is raw {
-        LEAVE $!count++;
+    method consume(::?CLASS:D:) is raw {
         loop {
-            return-rw $!type.^map_it_field: $!count, $field, $!values.pull-one, :keep<missing>, :drop<again>
+            return-rw $!type.^map_it_field:
+                $!keys.pull-one, $!fields.pull-one, $!values.pull-one, :$!mode, :keep<missing>, :drop<again>
         }
     }
 
@@ -119,19 +132,19 @@ my class ListIterator does Iterator {
         possible), but if any fields do not typecheck, then an exception will
         be thrown. Note that it's impossible for extraneous fields to exist in
         a list. ]
-    method subsume(::?CLASS:D: Mu $field is raw) is raw {
-        LEAVE $!count++;
-        $!type.^map_it_field: $!count, $field, $!values.pull-one, :keep<coercing>, :drop<now>
+    method subsume(::?CLASS:D:) is raw {
+        $!type.^map_it_field:
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one, :$!mode, :keep<coercing>, :drop<now>
     }
 
     #|[ If any values in the given list cannot typecheck, they will be stripped
         from the list; if any fields are missing from the given list, they will
         be stubbed (if possible).  This should only throw if a definite field
         is missing. ]
-    method coerce(::?CLASS:D: Mu $field is raw) is raw {
-        LEAVE $!count++;
+    method coerce(::?CLASS:D:) is raw {
         loop {
-            return-rw $!type.^map_it_field: $!count, $field, $!values.pull-one, :keep<coercing>, :drop<again>
+            return-rw $!type.^map_it_field:
+                $!keys.pull-one, $!fields.pull-one, $!values.pull-one, :$!mode, :keep<coercing>, :drop<again>
         }
     }
 
@@ -143,16 +156,12 @@ my class ListIterator does Iterator {
     such a way as to support lazy lists. ]
 my class ArrayIterator is ListIterator {
     method push-all(::?CLASS:D: \target --> IterationEnd) {
-        my IterationBuffer:D \buffer .= new;
-        loop {
-            if (my $result := self.pull-one) =:= IterationEnd {
-                last if $.count %% $.arity;
-                return IterationEnd;
-            } else {
-                buffer.push: $result;
-            }
+        my IterationBuffer \buffer .= new;
+        for 0..* -> $count is raw {
+            (my $result := self.pull-one) =:= IterationEnd
+              ?? last(target.append: buffer)
+              !! buffer.push($result)
         }
-        target.append: buffer;
     }
 }
 #=[ Array ops can get passed lazy lists, though Array does not support
@@ -163,47 +172,52 @@ my class ArrayIterator is ListIterator {
     list's arity without using the elems method. ]
 
 class Data::Record::List does Data::Record::Instance[List] does Iterable does Positional {
-    has @!record;
+    has @!record is required;
 
-    submethod BUILD(::?CLASS:D: :@record! --> Nil) {
+    submethod BUILD(::?CLASS:D: :@record is raw --> Nil) {
         @!record := @record;
     }
 
-    multi method new(::?CLASS:_: List:D $original is raw --> ::?CLASS:D) {
+    multi method new(::?CLASS:_: List:D $original is raw, Bool:D :wrap($)! where ?* --> ::?CLASS:D) {
         my @record := self.wrap: $original;
-        @record.elems unless @record.is-lazy; # Reify eager lists for eager typechecking.
+        sink @record unless @record.is-lazy;
         self.bless: :@record
     }
     multi method new(::?CLASS:_: List:D $original is raw, Bool:D :consume($)! where ?* --> ::?CLASS:D) {
         my @record := self.consume: $original;
-        @record.elems unless @record.is-lazy; # Reify eager lists for eager typechecking.
+        sink @record unless @record.is-lazy;
         self.bless: :@record
     }
     multi method new(::?CLASS:_: List:D $original is raw, Bool:D :subsume($)! where ?* --> ::?CLASS:D) {
         my @record := self.subsume: $original;
-        @record.elems unless @record.is-lazy; # Reify eager lists for eager typechecking.
+        sink @record unless @record.is-lazy;
         self.bless: :@record
     }
     multi method new(::?CLASS:_: List:D $original is raw, Bool:D :coerce($)! where ?* --> ::?CLASS:D) {
         my @record := self.coerce: $original;
-        @record.elems unless @record.is-lazy; # Reify eager lists for eager typechecking.
+        sink @record unless @record.is-lazy;
+        self.bless: :@record
+    }
+    multi method new(::?CLASS:_ ::THIS: List:D ::T $original is raw, Data::Record::Mode:D :$mode = WRAP --> ::?CLASS:D) {
+        my @record := T.from-iterator: ListIterator.new: THIS, $mode, 'list reification', $original;
+        sink @record unless @record.is-lazy;
         self.bless: :@record
     }
 
-    method wrap(::THIS ::?CLASS:_: ::T List:D $original is raw --> List:D) {
-        T.from-iterator: ListIterator.new: THIS, 'wrap', 'list reification', @.fields, $original
+    method wrap(::?CLASS:_ ::THIS: ::T List:D $original is raw --> List:D) {
+        T.from-iterator: ListIterator.new: THIS, WRAP, 'list reification', $original
     }
 
-    method consume(::THIS ::?CLASS:_: ::T List:D $original is raw --> List:D) {
-        T.from-iterator: ListIterator.new: THIS, 'consume', 'list reification', @.fields, $original
+    method consume(::?CLASS:_ ::THIS: ::T List:D $original is raw --> List:D) {
+        T.from-iterator: ListIterator.new: THIS, CONSUME, 'list reification', $original
     }
 
-    method subsume(::THIS ::?CLASS:_: ::T List:D $original is raw --> List:D) {
-        T.from-iterator: ListIterator.new: THIS, 'subsume', 'list reification', @.fields, $original
+    method subsume(::?CLASS:_ ::THIS: ::T List:D $original is raw --> List:D) {
+        T.from-iterator: ListIterator.new: THIS, SUBSUME, 'list reification', $original
     }
 
-    method coerce(::THIS ::?CLASS:_: ::T List:D $original is raw --> List:D) {
-        T.from-iterator: ListIterator.new: THIS, 'coerce', 'list reification', @.fields, $original
+    method coerce(::?CLASS:_ ::THIS: ::T List:D $original is raw --> List:D) {
+        T.from-iterator: ListIterator.new: THIS, COERCE, 'list reification', $original
     }
 
     method fields(::?CLASS:_: --> List:D) { self.^fields }
@@ -211,9 +225,9 @@ class Data::Record::List does Data::Record::Instance[List] does Iterable does Po
     method record(::?CLASS:D: --> List:D) { @!record }
 
     do { # hide this sub
-        proto sub unrecord(Mu)                                 {*}
+        proto sub unrecord(Mu) is raw                          {*}
         multi sub unrecord(Data::Record::Instance:D \recorded) { recorded.unrecord }
-        multi sub unrecord(Mu \value) is raw                   { value }
+        multi sub unrecord(Mu \value)                          { value }
 
         method unrecord(::?CLASS:D: --> List:D) {
             @!record.WHAT.from-iterator: @!record.map(&unrecord).iterator
@@ -227,15 +241,14 @@ class Data::Record::List does Data::Record::Instance[List] does Iterable does Po
         $raku
     }
 
-    multi method ACCEPTS(::?CLASS:U: List:D $list is raw --> Bool:D) {
-        my @fields := @.fields;
-        for (|@fields xx *) Z $list -> (Mu $field is raw, Mu $value is raw) {
-            state Int:D $count = 0;
-            NEXT $count++;
-            LAST return False unless $count %% +@fields;
-            return False unless $value ~~ $field;
+    do {
+        sub ACCEPTS(Mu \a, Mu \b --> Bool:D) is hidden-from-backtrace { a.ACCEPTS: b }
+
+        multi method ACCEPTS(::?CLASS:U: List:D \topic --> Bool:D) {
+            my @fields  := self.^fields;
+            my @matches := eager (|@fields xx *) Z[[&ACCEPTS]] topic;
+            ? [&&] |@matches, !topic.is-lazy, @matches %% @fields
         }
-        True
     }
 
     method EXISTS-POS(::?CLASS:D: Mu $pos is raw --> Bool:D) {
@@ -248,12 +261,12 @@ class Data::Record::List does Data::Record::Instance[List] does Iterable does Po
 
     method BIND-POS(::?CLASS:D: Mu $pos is raw, Mu $value is raw --> Mu) is raw {
         state $*operation = 'binding';
-        @!record.BIND-POS: $pos, self.^map_field: $pos, self.^get_field($pos), $value
+        @!record.BIND-POS: $pos, self.^map_field: $pos, $value
     }
 
     method ASSIGN-POS(::?CLASS:D: Mu $pos is raw, Mu $value is raw --> Mu) is raw {
         state $*operation = 'assignment';
-        @!record.ASSIGN-POS: $pos, self.^map_field: $pos, self.^get_field($pos), $value
+        @!record.ASSIGN-POS: $pos, self.^map_field: $pos, $value
     }
 
     method DELETE-POS(::?CLASS:D: Mu $pos is raw --> Mu) is raw {
@@ -264,79 +277,98 @@ class Data::Record::List does Data::Record::Instance[List] does Iterable does Po
         @!record.DELETE-POS: $pos
     }
 
-    proto method push(|) {*}
-    multi method push(::THIS ::?CLASS:D: Mu $value is raw --> ::?CLASS:D) {
-        self.^enforce_singleton: state $*operation = 'push';
-        @!record.push: self.^map_field: 0, self.^get_field(0), $value;
-        self
-    }
-    multi method push(::THIS ::?CLASS:D: **@values --> ::?CLASS:D) {
-        @!record.push: Slip.from-iterator: ArrayIterator.new: THIS, 'wrap', 'push', @.fields, @values;
+    method push(::THIS ::?CLASS:D: **@values is raw --> ::?CLASS:D) {
+        @!record.push: Slip.from-iterator: ArrayIterator.new: THIS, WRAP, 'push', @values;
         self
     }
 
-    method pop(::?CLASS:D:) is raw {
-        self.^enforce_singleton: 'pop';
+    method pop(::?CLASS:D ::THIS:) is raw {
+        self.^enforce_singleton: 'pop'; # XXX: "enforce"
         @!record.pop
     }
 
-    method shift(::?CLASS:D: --> Mu) is raw {
-        self.^enforce_singleton: 'shift';
+    method shift(::?CLASS:D ::THIS: --> Mu) is raw {
+        self.^enforce_singleton: 'pop'; # XXX: "enforce"
         @!record.shift
     }
 
-    proto method unshift(|) {*}
-    multi method unshift(::?CLASS:D: $value is raw --> ::?CLASS:D) {
-        self.^enforce_singleton: state $*operation = 'unshift';
-        @!record.unshift: self.^map_field: 0, self.^get_field(0), $value;
-        self
-    }
-    multi method unshift(::THIS ::?CLASS:D: **@values is raw --> ::?CLASS:D) {
-        @!record.unshift: Slip.from-iterator: ArrayIterator.new: THIS, 'wrap', 'unshift', @.fields, @values;
+    method unshift(::THIS ::?CLASS:D: **@values is raw --> ::?CLASS:D) {
+        @!record.unshift: Slip.from-iterator: ArrayIterator.new: THIS, WRAP, 'unshift', @values;
         self
     }
 
     proto method prepend(|) {*}
     multi method prepend(::THIS ::?CLASS:D: Iterable:D $values is raw --> ::?CLASS:D) {
-        @!record.prepend: Seq.new: ArrayIterator.new: THIS, 'wrap', 'prepend', @.fields, $values;
+        @!record.prepend: Seq.new: ArrayIterator.new: THIS, WRAP, 'prepend', $values;
         self
     }
     multi method prepend(::THIS ::?CLASS:D: **@values is raw --> ::?CLASS:D) {
-        @!record.prepend: Slip.from-iterator: ArrayIterator.new: THIS, 'wrap', 'prepend', @.fields, @values;
+        @!record.prepend: Slip.from-iterator: ArrayIterator.new: THIS, WRAP, 'prepend', @values;
         self
     }
 
     proto method append(|) {*}
     multi method append(::THIS ::?CLASS:D: Iterable:D $values is raw --> ::?CLASS:D) {
-        @!record.append: Seq.new: ArrayIterator.new: THIS, 'wrap', 'append', @.fields, $values;
+        @!record.append: Seq.new: ArrayIterator.new: THIS, WRAP, 'append', $values;
         self
     }
     multi method append(::THIS ::?CLASS:D: **@values is raw --> ::?CLASS:D) {
-        @!record.append: Slip.from-iterator: ArrayIterator.new:  THIS, 'wrap', 'append', @.fields, @values;
+        @!record.append: Slip.from-iterator: ArrayIterator.new:  THIS, WRAP, 'append', @values;
         self
     }
 
-    method eager(::?CLASS:D: --> ::?CLASS:D) { @!record.is-lazy ?? self.new(@.record.eager) !! self }
-    method lazy(::?CLASS:D: --> ::?CLASS:D)  { @!record.is-lazy ?? self !! self.new(@.record.lazy) }
+    multi method iterator(::?CLASS:D:) { @!record.iterator }
 
-    method iterator(::?CLASS:D: --> Mu)  { @!record.iterator }
-    method is-lazy(::?CLASS:D: --> Mu)   { @!record.is-lazy }
-    method cache(::?CLASS:D: --> Mu)     { @!record.cache }
-    method list(::?CLASS:D: --> Mu)      { self }
-    method hash(::?CLASS:D: --> Mu)      { @!record.hash }
-    method elems(::?CLASS:D: --> Mu)     { @!record.elems }
-    method keys(::?CLASS:D: --> Mu)      { @!record.keys }
-    method values(::?CLASS:D: --> Mu)    { @!record.values }
-    method kv(::?CLASS:D: --> Mu)        { @!record.kv }
-    method pairs(::?CLASS:D: --> Mu)     { @!record.pairs }
-    method antipairs(::?CLASS:D: --> Mu) { @!record.antipairs }
+    multi method list(::?CLASS:D:) is raw { self }
+
+    multi method hash(::?CLASS:D:) is raw { @!record.hash }
+
+    method is-lazy(::?CLASS:_:) {
+        self.DEFINITE && @!record.is-lazy
+    }
+
+    method cache(::?CLASS:_: --> ::?CLASS:D) {
+        self.DEFINITE
+          ?? @!record.is-lazy
+            ?? self.new(@!record.cache)
+            !! self
+          !! @(self).cache
+    }
+
+    method eager(::?CLASS:_: --> ::?CLASS:D) {
+        self.DEFINITE
+          ?? @!record.is-lazy
+            ?? self.new(@!record.eager)
+            !! self
+          !! @(self).eager
+    }
+
+    method lazy(::?CLASS:_: --> ::?CLASS:D) {
+        self.DEFINITE
+          ?? @!record.is-lazy
+            ?? self
+            !! self.new(@!record.lazy)
+          !! @(self).lazy
+    }
+
+    multi method elems(::?CLASS:D:) { @!record.elems }
+
+    multi method keys(::?CLASS:D:) { @!record.keys }
+
+    multi method values(::?CLASS:D:) { @!record.values }
+
+    multi method kv(::?CLASS:D:) { @!record.kv }
+
+    multi method pairs(::?CLASS:D:) { @!record.pairs }
+
+    multi method antipairs(::?CLASS:D:) { @!record.antipairs }
 }
 
 multi sub circumfix:<[@ @]>(+@fields is raw, Str :$name --> Mu) is export {
-    MetamodelX::RecordHOW[Data::Record::List].new_type(@fields, :$name).^compose
+    MetamodelX::RecordHOW[List:D, Data::Record::List].new_type(@fields, :$name).^compose
 }
 multi sub circumfix:<[@ @]>(Block:D $block is raw, Str :$name --> Mu) is export {
-    MetamodelX::RecordTemplateHOW[MetamodelX::RecordHOW[Data::Record::List]].new_type: $block, :$name
+    MetamodelX::RecordTemplateHOW[MetamodelX::RecordHOW[List:D, Data::Record::List]].new_type: $block, :$name
 }
 
 multi sub infix:«(><)»(List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {

@@ -101,11 +101,11 @@ method type_check(::?ROLE:D: Mu $obj is raw is copy, Mu $checkee is raw is copy 
     nqp::eqaddr(($checkee := nqp::decont($checkee)), ($obj := nqp::decont($obj))) # Is it our identity?
       || nqp::istype_nd(D, $checkee) # Is it like our delegate?
       || nqp::istype_nd($checkee.HOW, P) # Is it a parameterization of ours?
-        && nqp::eqaddr($checkee.^template, $obj)
+        && nqp::istype($obj, $checkee.^template)
 }
 
-method accepts_type(::?ROLE:D: Mu $obj is raw, Mu $chcekee is raw --> int) {
+method accepts_type(::?ROLE:D: Mu $obj is raw, Mu $checkee is raw --> int) {
     use nqp;
-    nqp::istype_nd($chcekee.HOW, P)
-      && nqp::eqaddr($chcekee.^template, nqp::decont($obj))
+    nqp::istype_nd($checkee.HOW, P)
+      && nqp::istype_nd($checkee.^template, $obj)
 }

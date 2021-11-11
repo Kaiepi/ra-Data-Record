@@ -8,9 +8,9 @@ use Test;
 plan 2;
 
 subtest 'MetamodelX::RecorderHOW', {
-    plan 10;
+    plan 9;
 
-    my class Instance { method fields { self.^fields } }
+    my class Instance { method fields($? --> Empty) { } }
 
     my Mu \Named := Mu;
     my Mu \Anon  := Mu;
@@ -33,9 +33,7 @@ subtest 'MetamodelX::RecorderHOW', {
     lives-ok {
         Named ~~ -> Instance { }
     }, 'records can delegate typechecks';
-    lives-ok {
-        cmp-ok Named.fields, &[=:=], Named.^fields, 'can invoke metamethods on self from a method';
-    }, 'can invoke methods on a record via its delegate';
+    cmp-ok Named.fields, &[=:=], Named.fields, 'can invoke methods';
 };
 
 subtest 'MetamodelX::RecordTemplateHOW', {
@@ -43,13 +41,16 @@ subtest 'MetamodelX::RecordTemplateHOW', {
 
     my class Instance { method method() { } }
 
-    my class Protocol does MetamodelX::RecorderHOW[List, Instance] { }
+    my class Recorder does MetamodelX::RecorderHOW[List, Instance] {
+        has $!fields is built(:bind);
+        method fields($?) { $!fields }
+    }
 
     my Mu \RecordTemplate  = Mu;
     my    &body_block     := { $_ };
     lives-ok {
         RecordTemplate :=
-            MetamodelX::RecordTemplateHOW[Protocol].new_type: &body_block, :name<Record>;
+            MetamodelX::RecordTemplateHOW[Recorder].new_type: &body_block, :name<Record>;
     }, 'can create new record template types';
 
     ok RecordTemplate.HOW.find_method(RecordTemplate, 'method'),

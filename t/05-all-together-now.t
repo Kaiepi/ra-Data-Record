@@ -45,8 +45,8 @@ subtest 'records', {
         items => [@ <@ Int:D, Str:D @> @]
     @} :name('Schema');
 
-    my %data =
-        name => 'Kaiepi',
+    my %data is Map =
+        name  => 'Kaiepi',
         items => ((1,'First!!!111!1!one'),);
 
     lives-ok {
