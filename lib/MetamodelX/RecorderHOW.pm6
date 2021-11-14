@@ -1,4 +1,4 @@
-use v6;
+use v6.d;
 unit role MetamodelX::RecorderHOW[::F, ::D]
      does Metamodel::Naming
      does Metamodel::REPRComposeProtocol

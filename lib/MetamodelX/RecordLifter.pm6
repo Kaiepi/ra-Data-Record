@@ -1,4 +1,4 @@
-use v6;
+use v6.d;
 use Data::Record::Mode;
 use Data::Record::Exceptions;
 unit role MetamodelX::RecordLifter[::I];
