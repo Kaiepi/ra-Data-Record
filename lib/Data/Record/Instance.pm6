@@ -50,10 +50,10 @@ multi method gist(::?CLASS:D: --> Str:D) { self.record.gist }
 multi method raku(::?CLASS:D: --> Str:D) { self.^name ~ '.new(' ~ self.record.raku ~ ')' }
 
 proto method ACCEPTS(Mu: Mu) {*}
-multi method ACCEPTS(::?CLASS:_: Mu \topic) is raw {
-    Metamodel::Primitives.is_type(topic, T) or
-        Metamodel::Primitives.is_type(topic, $?CLASS) and
-        self.HOW =:= topic.HOW || self.fields.ACCEPTS(topic.fields)
+multi method ACCEPTS(::?ROLE:U: T --> True) { }
+multi method ACCEPTS(::?ROLE:_: Mu --> False) { }
+multi method ACCEPTS(::?CLASS:_: ::?CLASS \topic) is raw {
+    self.HOW =:= topic.HOW || self.fields.ACCEPTS(topic.fields)
 }
 
 #|[ Handles an operation on a field of the record given a callback accepting a

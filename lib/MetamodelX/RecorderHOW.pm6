@@ -24,7 +24,6 @@ method new_type(::?ROLE:_: Mu $fields is raw, Str :$name, Mu :$template is raw, 
     my int $id   = !$name.DEFINITE && $next_id⚛++;
     my Mu  $how := self.new: |%rest, :$fields, :$id, :$template;
     my Mu  $obj := Metamodel::Primitives.create_type: $how, D.REPR;
-    Metamodel::Primitives.configure_type_checking: $obj, ($obj,), :!authoritative, :call_accepts;
     $how.set_name: $obj, $id ?? "<anon record $id>" !! $name<>;
     $obj
 }
@@ -71,10 +70,6 @@ method is_composed(::?ROLE:D: Mu) { $!is_composed }
 
 method type_check(::?ROLE:D: Mu $obj is raw, Mu $checkee is raw is copy --> int) {
     use nqp;
-    nqp::istype_nd(D, $checkee)
-}
-
-method accepts_type(::?ROLE:D: Mu $obj is raw, Mu $checkee is raw is copy --> int) {
-    use nqp;
-    nqp::istype_nd($checkee, D)
+    nqp::eqaddr(self, $checkee.HOW)
+      || nqp::istype_nd(D, $checkee)
 }

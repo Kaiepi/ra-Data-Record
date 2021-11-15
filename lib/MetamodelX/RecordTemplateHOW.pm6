@@ -98,14 +98,11 @@ method instantiate_generic(::?ROLE:D: Mu $obj is raw, Mu $type_env is raw) {
 
 method type_check(::?ROLE:D: Mu $obj is raw is copy, Mu $checkee is raw is copy --> int) {
     use nqp;
-    nqp::eqaddr(($checkee := nqp::decont($checkee)), ($obj := nqp::decont($obj))) # Is it our identity?
-      || nqp::istype_nd(D, $checkee) # Is it like our delegate?
-      || nqp::istype_nd($checkee.HOW, P) # Is it a parameterization of ours?
-        && nqp::istype($obj, $checkee.^template)
+    nqp::eqaddr(self, (my $chow := $checkee.HOW)) # Is it our identity?
+      || nqp::eqaddr(P, $chow.WHAT) # Is it a parameterization?
 }
 
 method accepts_type(::?ROLE:D: Mu $obj is raw, Mu $checkee is raw --> int) {
     use nqp;
-    nqp::istype_nd($checkee.HOW, P)
-      && nqp::istype_nd($checkee.^template, $obj)
+    nqp::istype_nd($checkee, D) # Is it like our delegate?
 }
