@@ -9,9 +9,9 @@ use Data::Record::Exceptions;
 
 class Data::Record::Map { ... }
 
-role MetamodelX::RecordHOW[Map ::F, Data::Record::Map ::D] does MetamodelX::RecorderHOW[Map, D] {
-    my constant &infix:<@~~> = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
+my constant &infix:<@~~> = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
 
+role MetamodelX::RecordHOW[Map ::F, Data::Record::Map ::D] does MetamodelX::RecorderHOW[Map, D] {
     has F      $!fields       is built(:bind) is required;
     has Bool() $!structural   is built = False;
     has Str:D  $!metamode     = $!structural ?? 'unstructured' !! 'structured'; # FIXME: Inverted??? Come on.

@@ -9,9 +9,9 @@ use Data::Record::Exceptions;
 
 class Data::Record::List { ... }
 
-role MetamodelX::RecordHOW[List ::F, Data::Record::List ::D] does MetamodelX::RecorderHOW[F, D] {
-    my constant &infix:<@~~> = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
+my constant &infix:<@~~> = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
 
+role MetamodelX::RecordHOW[List ::F, Data::Record::List ::D] does MetamodelX::RecorderHOW[F, D] {
     has $!fields is built(:bind) is required;
 
     method new(::?CLASS:_: F :$fields! is raw, *%named) {

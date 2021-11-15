@@ -104,5 +104,5 @@ method type_check(::?ROLE:D: Mu $obj is raw is copy, Mu $checkee is raw is copy 
 
 method accepts_type(::?ROLE:D: Mu $obj is raw, Mu $checkee is raw --> int) {
     use nqp;
-    nqp::istype_nd($checkee, D) # Is it like our delegate?
+    nqp::istype_nd(D, $checkee) # Is it like our delegate?
 }

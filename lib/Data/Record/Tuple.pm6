@@ -9,13 +9,13 @@ use Data::Record::Exceptions;
 
 class Data::Record::Tuple { ... }
 
-role MetamodelX::RecordHOW[List ::F, Data::Record::Tuple ::D] does MetamodelX::RecorderHOW[F, D] {
-    my constant &infix:<@~~> = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
+my constant &infix:<@~~> = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
 
+role MetamodelX::RecordHOW[List ::F, Data::Record::Tuple ::D] does MetamodelX::RecorderHOW[F, D] {
     has F $.fields is built(:bind) is required;
     
     #|[ A collection of fields for the record. ]
-    method fields(::?ROLE:D: $?) { $!fields }
+    method fields(::?ROLE:D: $type is raw) { $!fields }
     #=[ Its type is coupled to the delegate; if a Data::Record::Instance, that's also its type parameter. ]
 
     method get_field($type is raw, $key is raw) { $!fields.AT-POS: $key }
