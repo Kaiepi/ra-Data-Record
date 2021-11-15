@@ -161,7 +161,7 @@ my class MapIterator does PredictiveIterator {
     }
 }
 
-class Data::Record::Map does Data::Record::Instance[Map] does Iterable does Associative {
+class Data::Record::Map does Data::Record::Instance[Map:D] does Iterable does Associative {
     has %.record is required;
 
     submethod BUILD(::?CLASS:D: :%record is raw --> Nil) {

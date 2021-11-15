@@ -171,7 +171,7 @@ my class ArrayIterator is ListIterator {
     relevant iterator of our record, so we have some way to check the
     list's arity without using the elems method. ]
 
-class Data::Record::List does Data::Record::Instance[List] does Iterable does Positional {
+class Data::Record::List does Data::Record::Instance[List:D] does Iterable does Positional {
     has @!record is required;
 
     submethod BUILD(::?CLASS:D: :@record is raw --> Nil) {

@@ -132,7 +132,7 @@ my class TupleIterator does Iterator {
     }
 }
 
-class Data::Record::Tuple does Data::Record::Instance[List] does Iterable does Positional {
+class Data::Record::Tuple does Data::Record::Instance[List:D] does Iterable does Positional {
     has @!record is required;
 
     submethod BUILD(::?CLASS:D: :@record is raw --> Nil) {
