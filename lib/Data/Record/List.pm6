@@ -1,4 +1,4 @@
-use v6.d;
+use v6.e.PREVIEW;
 use MetamodelX::RecordHOW;
 use MetamodelX::RecorderHOW;
 use MetamodelX::RecordTemplateHOW;
@@ -10,7 +10,7 @@ use Data::Record::Exceptions;
 class Data::Record::List { ... }
 
 role MetamodelX::RecordHOW[List ::F, Data::Record::List ::D] does MetamodelX::RecorderHOW[F, D] {
-    my constant Lifter = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
+    my constant &infix:<@~~> = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
 
     has $!fields is built(:bind) is required;
 
@@ -49,14 +49,14 @@ role MetamodelX::RecordHOW[List ::F, Data::Record::List ::D] does MetamodelX::Re
 
     method map_field($type is raw, $key is raw, Mu $value is raw, :$mode = WRAP, :$drop = 'now') is raw {
         $!fields.EXISTS-POS($key % $!fields.elems)
-          ?? Lifter.lift($!fields.AT-POS($key % $!fields.elems), $value, :$mode)
+          ?? ($value @~~ $!fields.AT-POS($key % $!fields.elems) :$mode)
           !! self."drop_$drop"($type, $key, $value)
     }
 
     method map_it_field($type is raw, $key is raw, Mu $field is raw, Mu $value is raw, :$mode!, :$keep!, :$drop!) is raw {
         $value =:= IterationEnd
           ?? self."keep_it_$keep"($type, $key, $field)
-          !! Lifter.lift($field, $value, :$mode)
+          !! ($value @~~ $field :$mode)
     }
 
     method keep_it_missing($type is raw, $key is raw, Mu $field is raw --> IterationEnd) {

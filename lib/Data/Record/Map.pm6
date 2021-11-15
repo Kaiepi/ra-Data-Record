@@ -10,7 +10,7 @@ use Data::Record::Exceptions;
 class Data::Record::Map { ... }
 
 role MetamodelX::RecordHOW[Map ::F, Data::Record::Map ::D] does MetamodelX::RecorderHOW[Map, D] {
-    my constant Lifter = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
+    my constant &infix:<@~~> = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
 
     has F      $!fields       is built(:bind) is required;
     has Bool() $!structural   is built = False;
@@ -36,7 +36,7 @@ role MetamodelX::RecordHOW[Map ::F, Data::Record::Map ::D] does MetamodelX::Reco
         Data::Record::Mode:D :$mode = WRAP, :$drop = $!drop_default
     ) {
         $!fields.EXISTS-KEY($key)
-          ?? Lifter.lift($!fields.AT-KEY($key), $value, :$mode)
+          ?? ($value @~~ $!fields.AT-KEY($key) :$mode)
           !! self."drop_$drop"($type, $key, $value)
     }
 
@@ -46,7 +46,7 @@ role MetamodelX::RecordHOW[Map ::F, Data::Record::Map ::D] does MetamodelX::Reco
     ) is raw {
         $!fields.EXISTS-KEY($key)
           ?? $values.EXISTS-KEY($key)
-            ?? Lifter.lift($!fields.AT-KEY($key), $values.AT-KEY($key), :$mode)
+            ?? ($values.AT-KEY($key) @~~ $!fields.AT-KEY($key) :$mode)
             !! self."keep_$keep"($type, $key, $!fields.AT-KEY($key))
           !! self."drop_$drop"($type, $key, $values.AT-KEY($key))
     }

@@ -10,7 +10,7 @@ use Data::Record::Exceptions;
 class Data::Record::Tuple { ... }
 
 role MetamodelX::RecordHOW[List ::F, Data::Record::Tuple ::D] does MetamodelX::RecorderHOW[F, D] {
-    my constant Lifter = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
+    my constant &infix:<@~~> = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
 
     has F $.fields is built(:bind) is required;
     
@@ -32,7 +32,7 @@ role MetamodelX::RecordHOW[List ::F, Data::Record::Tuple ::D] does MetamodelX::R
 
     method map_field($type is raw, $key is raw, Mu $value is raw, Data::Record::Mode:D :$mode = WRAP, :$drop = 'unbounded') is raw {
         $!fields.EXISTS-POS($key)
-          ?? Lifter.lift($!fields.AT-POS($key), $value, :$mode)
+          ?? ($value @~~ $!fields.AT-POS($key) :$mode)
           !! self."drop_$drop"($type, $key, $value)
     }
 
@@ -45,7 +45,7 @@ role MetamodelX::RecordHOW[List ::F, Data::Record::Tuple ::D] does MetamodelX::R
           ?? self."drop_it_$drop"($type, $key, $value)
           !! $value =:= IterationEnd
             ?? self."keep_it_$keep"($type, $key, $field)
-            !! Lifter.lift($field, $value, :$mode)
+            !! ($value @~~ $field :$mode)
     }
 
     method drop_it_more($type is raw, $key is raw, Mu $value is raw --> IterationEnd) {
