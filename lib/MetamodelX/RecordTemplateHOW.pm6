@@ -8,8 +8,6 @@ has         %!parameters is required;
 
 has Metamodel::Archetypes:D $!archetypes is required;
 
-method anon_name(::?CLASS:_: --> Str:D) { MetamodelX::RecordHOW.anon_name }
-
 submethod BUILD(::?CLASS:D: Mu :$delegate! is raw, Block:D :$body_block! is raw, :%parameters! --> Nil) {
     $!delegate   := $delegate.^parameterize: |%parameters;
     $!body_block := $body_block;
@@ -23,9 +21,11 @@ submethod BUILD(::?CLASS:D: Mu :$delegate! is raw, Block:D :$body_block! is raw,
 }
 
 method new_type(::?CLASS:_: Mu $delegate is raw, Block:D $body_block is raw, Str:_ :$name, *%parameters --> Mu) {
+    our Str:D constant ANON_NAME = '<anon record>';
+
     my ::?CLASS:D $meta := self.bless: :$delegate, :$body_block, :%parameters;
     my Mu         $obj  := Metamodel::Primitives.create_type: $meta, 'Uninstantiable';
-    $meta.set_name: $obj, $name // self.anon_name;
+    $meta.set_name: $obj, $name // ANON_NAME;
     Metamodel::Primitives.configure_type_checking: $obj, (), :!authoritative, :call_accepts;
     Metamodel::Primitives.set_parameterizer($obj, &RECORD-PARAMETERIZER);
     $obj
