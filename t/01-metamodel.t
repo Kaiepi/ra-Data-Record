@@ -9,10 +9,8 @@ plan 2;
 subtest 'MetamodelX::RecordHOW', {
     plan 10;
 
-    my Mu \Record = Mu;
-    lives-ok {
-        Record := MetamodelX::RecordHOW.new_type: :name<Record>
-    }, 'can create new record types';
+    sub term:<Record> { once MetamodelX::RecordHOW.new_type: :name<Record> }
+    lives-ok { Record }, 'can create new record types';
     lives-ok {
         Record.HOW.set_template: Record, Mu
     }, 'can set record templates before composition';
@@ -56,20 +54,18 @@ subtest 'MetamodelX::RecordTemplateHOW', {
         method method() { }
     }
 
-    my Mu \RecordTemplate  = Mu;
-    my    &body_block     := { $_ };
-    lives-ok {
-        RecordTemplate := MetamodelX::RecordTemplateHOW.new_type:
-            Data::Record::Mock, &body_block, :name<Record>, :param;
-    }, 'can create new record template types';
+    my &body_block := { $_ };
+    sub term:<RecordTemplate> {
+        once MetamodelX::RecordTemplateHOW.new_type:
+            Data::Record::Mock, &body_block, :name<Record>, :param
+    }
+    lives-ok { RecordTemplate }, 'can create new record template types';
 
     ok RecordTemplate.HOW.find_method(RecordTemplate, 'method'),
       'can find methods on record templates, which are those of their delegate';
 
-    my Mu \Record = Mu;
-    lives-ok {
-        Record := RecordTemplate.^parameterize: 1;
-    }, 'can parameterize record template types';
+    sub term:<Record> { once RecordTemplate.^parameterize: 1 }
+    lives-ok { Record }, 'can parameterize record template types';
 
     cmp-ok Record.^template, &[=:=], RecordTemplate,
       'parameterizations have the correct template';

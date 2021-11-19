@@ -9,12 +9,10 @@ plan 4;
 subtest 'basic', {
     plan 45;
 
-    my Mu    \IntTuple = Mu;
-    my Str:D $name     = 'IntTuple';
-    lives-ok {
-        IntTuple := <@ Int:D @> :$name;
-    }, 'can create tuple record types';
+    my Str:D $name = 'IntTuple';
+    sub term:<IntTuple> { once <@ Int:D @>:$name }
 
+    lives-ok { IntTuple }, 'can create tuple record types';
     is IntTuple.^name, $name,
       'names get passed around when creating tuple record types OK';
     is IntTuple.raku, "<@ Int:D @>:name('$name')",
@@ -171,14 +169,11 @@ subtest 'basic', {
 subtest 'generic', {
     plan 4;
 
-    my Mu \PTuple    = Mu;
-    my Mu \PIntTuple = Mu;
-    lives-ok {
-        PTuple := <@{ $^a }@> :name('PTuple');
-    }, 'can create a generic tuple';
-    lives-ok {
-        PIntTuple := PTuple.^parameterize: Int:D;
-    }, 'can parameterize generic tuples';
+    sub term:<PTuple>    { once <@{ $^a }@>:name<PTuple> }
+    sub term:<PIntTuple> { once PTuple.^parameterize: Int:D }
+
+    lives-ok { PTuple }, 'can create a generic tuple';
+    lives-ok { PIntTuple }, 'can parameterize generic tuples';
 
     cmp-ok (1,), &[~~], PIntTuple,
       'can typecheck against generic tuples';
@@ -190,10 +185,9 @@ subtest 'generic', {
 subtest 'nested', {
     plan 8;
 
-    my Mu \NIntTuple = Mu;
-    lives-ok {
-        NIntTuple := <@ <@ Int:D @> @> :name('NIntTuple');
-    }, 'can create nested tuples';
+    sub term:<NIntTuple> { once <@ <@ Int:D @> @>:name<NIntTuple> }
+
+    lives-ok { NIntTuple }, 'can create nested tuples';
     cmp-ok ((1,),), &[~~], NIntTuple,
       'can typecheck against nested tuples';
 
@@ -222,7 +216,8 @@ subtest 'nested', {
 subtest 'lazy', {
     plan 3;
 
-    my Mu        \IntTuple  = <@ Int:D @> :name('IntTuple');
+    sub term:<IntTuple> { once <@ Int:D @>:name<IntTuple> }
+
     my Promise:D $reified  .= new;
     my           @instance;
     lives-ok {

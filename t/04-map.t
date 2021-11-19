@@ -12,11 +12,10 @@ subtest 'non-structural', {
     subtest 'basic', {
         plan 48;
 
-        my Mu    \NameMap = Mu;
-        my Str:D $name    = 'NameMap';
-        lives-ok {
-            NameMap := {@ name => Str:D @} :$name;
-        }, 'can create record map types';
+        my Str:D $name = 'NameMap';
+        sub term:<NameMap> { once ({@ name => Str:D @}:$name) }
+
+        lives-ok { NameMap }, 'can create record map types';
         throws-like {
             {@{ foo => Int:D }@}
         }, X::Data::Record::Block,
@@ -196,14 +195,11 @@ subtest 'non-structural', {
     subtest 'generic', {
         plan 4;
 
-        my Mu \PValueMap    = Mu;
-        my Mu \PStrValueMap = Mu;
-        lives-ok {
-            PValueMap := {@{ value => $^a }@} :name('PValueMap');
-        }, 'can create a generic map';
-        lives-ok {
-            PStrValueMap := PValueMap.^parameterize: Str:D;
-        }, 'can parameterize generic maps';
+        sub term:<PValueMap>    { once ({@{ value => $^a }@}:name<PValueMap>) }
+        sub term:<PStrValueMap> { once (PValueMap.^parameterize: Str:D) }
+
+        lives-ok { PValueMap }, 'can create a generic map';
+        lives-ok { PStrValueMap }, 'can parameterize generic maps';
 
         cmp-ok {value => 'ppopcorm.......'}, &[~~], PStrValueMap,
           'can typecheck against generic maps';
@@ -215,10 +211,9 @@ subtest 'non-structural', {
     subtest 'nested', {
         plan 8;
 
-        my Mu \NNameMap = Mu;
-        lives-ok {
-            NNameMap := {@ name => {@ value => Str:D @} @} :name('NNameMap');
-        }, 'can create nested maps';
+        sub term:<NNameMap> { once ({@ name => {@ value => Str:D @} @}:name<NNameMap>) }
+
+        lives-ok { NNameMap }, 'can create nested maps';
         cmp-ok {name => {value => 'ok'}}, &[~~], NNameMap,
           'can typecheck against nested maps';
 
@@ -251,11 +246,10 @@ subtest 'structural', {
     subtest 'basic', {
         plan 49;
 
-        my Mu    \NameMap = Mu;
-        my Str:D $name    = 'NameMap';
-        lives-ok {
-            NameMap := {@ name => Str:D @} :structural :$name;
-        }, 'can create structural record map types';
+        my Str:D $name = 'NameMap';
+        sub term:<NameMap> { once ({@ name => Str:D @}:structural:$name) }
+
+        lives-ok { NameMap }, 'can create structural record map types';
         throws-like {
             {@{ foo => Int:D }@} :structural
         }, X::Data::Record::Block,
@@ -432,14 +426,11 @@ subtest 'structural', {
     subtest 'generic', {
         plan 4;
 
-        my Mu \PValueMap    = Mu;
-        my Mu \PStrValueMap = Mu;
-        lives-ok {
-            PValueMap := {@{ value => $^a }@} :structural :name('PValueMap');
-        }, 'can create a generic structural map';
-        lives-ok {
-            PStrValueMap := PValueMap.^parameterize: Str:D;
-        }, 'can parameterize generic maps';
+        sub term:<PValueMap>    { once ({@{ value => $^a }@}:structural:name<PValueMap>) }
+        sub term:<PStrValueMap> { once (PValueMap.^parameterize: Str:D) }
+
+        lives-ok { PValueMap }, 'can create a generic structural map';
+        lives-ok { PStrValueMap }, 'can parameterize generic maps';
 
         cmp-ok {value => 'ppopcorm.......'}, &[~~], PStrValueMap,
           'can typecheck against generic maps';
@@ -451,10 +442,9 @@ subtest 'structural', {
     subtest 'nested', {
         plan 8;
 
-        my Mu \NNameMap = Mu;
-        lives-ok {
-            NNameMap := {@ name => {@ value => Str:D @} :structural @} :structural :name('NNameMap');
-        }, 'can create nested structural maps';
+        sub term:<NNameMap> { once ({@ name => {@ value => Str:D @}:structural @}:structural:name<NNameMap>) }
+
+        lives-ok { NNameMap }, 'can create nested structural maps';
         cmp-ok {name => {value => 'ok'}}, &[~~], NNameMap,
           'can typecheck against nested structural maps';
 

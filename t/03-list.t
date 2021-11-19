@@ -9,12 +9,10 @@ plan 4;
 subtest 'basic', {
     plan 55;
 
-    my Mu    \IntList = Mu;
-    my Str:D $name    = 'IntList';
-    lives-ok {
-        IntList := [@ Int:D @] :$name;
-    }, 'can create record list types';
+    my Str:D $name = 'IntList';
+    sub term:<IntList> { once [@ Int:D @]:$name }
 
+    lives-ok { IntList }, 'can create record list types';
     is IntList.^name, $name,
       'names get passed around when creating record list types OK';
     is IntList.raku, "[@ Int:D @]:name('$name')",
@@ -139,10 +137,9 @@ subtest 'basic', {
     cmp-ok @list, &[eqv], [1, 2, 3, 4, 5, 6],
       'can append values to a list';
 
-    my Mu \IntStrList = Nil;
-    lives-ok {
-        IntStrList := [@ Int:D, Str:D @] :name('IntStrList');
-    }, 'can create multi-field record list types';
+    sub term:<IntStrList> { once [@ Int:D, Str:D @]:name<IntStrList> }
+
+    lives-ok { IntStrList }, 'can create multi-field record list types';
 
     nok (1,'a',2) ~~ IntStrList,
       'cannot typecheck lists with the wrong arity for a multi-field list type';
@@ -217,14 +214,11 @@ subtest 'basic', {
 subtest 'generic', {
     plan 4;
 
-    my Mu \PList    = Mu;
-    my Mu \PIntList = Mu;
-    lives-ok {
-        PList := [@{ $^a }@] :name('PList');
-    }, 'can create a generic list';
-    lives-ok {
-        PIntList := PList.^parameterize: Int:D;
-    }, 'can parameterize generic lists';
+    sub term:<PList>    { once [@{ $^a }@]:name<PList> }
+    sub term:<PIntList> { once PList.^parameterize: Int:D }
+
+    lives-ok { PList }, 'can create a generic list';
+    lives-ok { PIntList }, 'can parameterize generic lists';
 
     cmp-ok (1,), &[~~], PIntList,
       'can typecheck against generic lists';
@@ -236,10 +230,9 @@ subtest 'generic', {
 subtest 'nested', {
     plan 8;
 
-    my Mu \NIntList = Mu;
-    lives-ok {
-        NIntList := [@ [@ Int:D @] @] :name('NIntList');
-    }, 'can create nested lists';
+    sub term:<NIntList> { once [@ [@ Int:D @] @]:name<NIntList> }
+
+    lives-ok { NIntList }, 'can create nested lists';
     cmp-ok ((1,),), &[~~], NIntList,
       'can typecheck against nested lists';
 
@@ -268,7 +261,8 @@ subtest 'nested', {
 subtest 'lazy', {
     plan 4;
 
-    my Mu        \IntList    = [@ Int:D @] :name('IntList');
+    sub term:<IntList> { once [@ Int:D @]:name<IntList> }
+
     my Promise:D $reified   .= new;
     my           @instance;
     lives-ok {
