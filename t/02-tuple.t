@@ -17,7 +17,7 @@ subtest 'basic', {
       'names get passed around when creating tuple record types OK';
     is IntTuple.raku, "<@ Int:D @>:name('$name')",
       'tuple record types have the correct .raku';
-    cmp-ok IntTuple.for, &[=:=], List,
+    cmp-ok IntTuple.for, &[=:=], List:D,
       'tuple record types are for lists';
     cmp-ok IntTuple.fields, &[eqv], (Int:D,),
       'tuple record types have the correct fields';

@@ -17,7 +17,7 @@ subtest 'basic', {
       'names get passed around when creating record list types OK';
     is IntList.raku, "[@ Int:D @]:name('$name')",
       'record list types have the correct .raku';
-    cmp-ok IntList.for, &[=:=], List,
+    cmp-ok IntList.for, &[=:=], List:D,
       'record list types are for lists';
     cmp-ok IntList.fields, &[eqv], (Int:D,),
       'record list types have the correct parameters';

@@ -25,7 +25,7 @@ subtest 'non-structural', {
           'names get passed around when creating record map types OK';
         is NameMap.raku, qs[{@ :name(Str:D) @}:name('$name')],
           'record map types have the correct .raku';
-        cmp-ok NameMap.for, &[=:=], Map,
+        cmp-ok NameMap.for, &[=:=], Map:D,
           'record map types are for maps';
         cmp-ok NameMap.fields, &[eqv], Map.new((name => Str:D,)),
           'record map types have the correct parameters';
@@ -259,7 +259,7 @@ subtest 'structural', {
           'names get passed around when creating structural record map types OK';
         is NameMap.raku, qs[{@ :name(Str:D) @}:structural:name('$name')],
           'structural record map types have the correct .raku';
-        cmp-ok NameMap.for, &[=:=], Map,
+        cmp-ok NameMap.for, &[=:=], Map:D,
           'structural record map types are for maps';
         cmp-ok NameMap.fields, &[eqv], Map.new((name => Str:D,)),
           'structural record map types have the correct parameters';

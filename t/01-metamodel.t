@@ -12,14 +12,10 @@ subtest 'MetamodelX::RecorderHOW', {
 
     my class Instance { method fields($? --> Empty) { } }
 
-    my Mu \Named := Mu;
-    my Mu \Anon  := Mu;
-    lives-ok {
-        Anon := MetamodelX::RecorderHOW[List, Instance].new_type: Empty;
-    }, 'can create a recorder';
-    lives-ok {
-        Named := MetamodelX::RecorderHOW[List, Instance].new_type: Empty, :name<Named>;
-    }, 'can create a named recorder';
+    only term:<Anon> { once MetamodelX::RecorderHOW[List, Instance].new_type: Empty }
+    only term:<Named> { once MetamodelX::RecorderHOW[List, Instance].new_type: Empty, :name<Named> }
+    lives-ok { Anon }, 'can create a recorder';
+    lives-ok { Named }, 'can create a named recorder';
 
     is Anon.^name, '<anon record 1>', 'anonymous records generate a name';
     is Named.^name, 'Named', 'named records have theirs';
@@ -46,20 +42,15 @@ subtest 'MetamodelX::RecordTemplateHOW', {
         method fields($?) { $!fields }
     }
 
-    my Mu \RecordTemplate  = Mu;
-    my    &body_block     := { $_ };
-    lives-ok {
-        RecordTemplate :=
-            MetamodelX::RecordTemplateHOW[Recorder].new_type: &body_block, :name<Record>;
-    }, 'can create new record template types';
+    my &body_block := { $_ };
+    only term:<RecordTemplate> { once MetamodelX::RecordTemplateHOW[Recorder].new_type: &body_block, :name<Record> }
+    lives-ok { RecordTemplate }, 'can create new record template types';
 
     ok RecordTemplate.HOW.find_method(RecordTemplate, 'method'),
       'can find methods on record templates, which are those of their delegate';
 
-    my Mu \Record := Mu;
-    lives-ok {
-        Record := RecordTemplate.^parameterize: 1;
-    }, 'can parameterize record template types';
+    only term:<Record> { once RecordTemplate.^parameterize: 1 }
+    lives-ok { Record }, 'can parameterize record template types';
 
     cmp-ok Record.^template, &[=:=], RecordTemplate,
       'parameterizations have the correct template';
