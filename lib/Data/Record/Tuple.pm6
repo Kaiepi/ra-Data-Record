@@ -8,75 +8,7 @@ use Data::Record::Exceptions;
 
 my constant &infix:<@~~> = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
 
-class Data::Record::Tuple { ... }
-
-#|[ Iterator for tuples (lists of fixed length) that are to become records.
-    Typechecks the list's values and coerces any record fields along the way. ]
-my class TupleIterator does Iterator {
-    has Data::Record::Tuple:U $.type      is required;
-    has Data::Record::Mode:D  $.mode      is required;
-    has Str:D                 $.operation is required;
-    has Iterator:D            $.keys      is required;
-    has Iterator:D            $.fields    is required;
-    has Iterator:D            $.values    is required;
-
-    submethod BUILD(::?CLASS:D: Mu :$!type! is raw, :$!mode!, :$!operation!, :$values! is raw --> Nil) {
-        $!keys   := (0..*).iterator;
-        $!fields := $!type.^fields.iterator;
-        $!values := $values.iterator;
-    }
-
-    method new(::?CLASS:_: Mu $type is raw, $mode, $operation, $values is raw --> ::?CLASS:D) {
-        self.bless: :$type, :$mode, :$operation, :$values
-    }
-
-    method pull-one(::?CLASS:D:) is raw {
-        my $*operation := $!operation;
-        self."$!mode"()
-    }
-
-    method is-lazy(::?CLASS:D: --> Bool:D) {
-        $!values.is-lazy
-    }
-
-    #|[ The list must have an arity equal to the tuple type's and all values
-        must typecheck as their corresponding fields, otherwise an exception
-        will be thrown. ]
-    method wrap(::?CLASS:D:) is raw {
-        $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
-            :$!mode, :drop<more>, :keep<missing>
-    }
-
-    #|[ The list must have an arity greater than or equal to the tuple type; if
-        it's greater, extraneous values will be stripped. If any values are
-        missing or values corresponding to fields don't typecheck, an exception
-        will be thrown. ]
-    method consume(::?CLASS:D:) is raw {
-        $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
-            :$!mode, :drop<less>, :keep<missing>
-    }
-
-    #|[ The list must have an arity lesser than or equal to the tuple type's;
-        if it's lesser, missing values will be stubbed (if possible).  If any
-        values don't typecheck as their corresponding fields, an exception will
-        be thrown. ]
-    method subsume(::?CLASS:D:) is raw {
-        $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
-            :$!mode, :drop<more>, :keep<coercing>
-    }
-
-    #|[ Coerces a list. Arity does not matter; missing values are stubbed (if
-        possible) and extraneous values are stripped. If any values don't
-        typecheck as their corresponding fields, an exception will be thrown. ]
-    method coerce(::?CLASS:D:) is raw {
-        $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
-            :$!mode, :drop<less>, :keep<coercing>
-    }
-}
+my class TupleIterator { ... }
 
 class Data::Record::Tuple does Data::Record::Instance[List:D] does Iterable does Positional {
     has @!record is required;
@@ -297,6 +229,74 @@ class Data::Record::Tuple does Data::Record::Instance[List:D] does Iterable does
             :$type, :what<index>, :$key, :value($field)
         ).throw if $field.HOW.archetypes.definite && $field.^definite;
         $field
+    }
+}
+
+#|[ Iterator for tuples (lists of fixed length) that are to become records.
+    Typechecks the list's values and coerces any record fields along the way. ]
+my class TupleIterator does Iterator {
+    has Data::Record::Tuple:U $.type      is required;
+    has Data::Record::Mode:D  $.mode      is required;
+    has Str:D                 $.operation is required;
+    has Iterator:D            $.keys      is required;
+    has Iterator:D            $.fields    is required;
+    has Iterator:D            $.values    is required;
+
+    submethod BUILD(::?CLASS:D: Mu :$!type! is raw, :$!mode!, :$!operation!, :$values! is raw --> Nil) {
+        $!keys   := (0..*).iterator;
+        $!fields := $!type.^fields.iterator;
+        $!values := $values.iterator;
+    }
+
+    method new(::?CLASS:_: Mu $type is raw, $mode, $operation, $values is raw --> ::?CLASS:D) {
+        self.bless: :$type, :$mode, :$operation, :$values
+    }
+
+    method pull-one(::?CLASS:D:) is raw {
+        my $*operation := $!operation;
+        self."$!mode"()
+    }
+
+    method is-lazy(::?CLASS:D: --> Bool:D) {
+        $!values.is-lazy
+    }
+
+    #|[ The list must have an arity equal to the tuple type's and all values
+        must typecheck as their corresponding fields, otherwise an exception
+        will be thrown. ]
+    method wrap(::?CLASS:D:) is raw {
+        $!type.^map_it_field:
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            :$!mode, :drop<more>, :keep<missing>
+    }
+
+    #|[ The list must have an arity greater than or equal to the tuple type; if
+        it's greater, extraneous values will be stripped. If any values are
+        missing or values corresponding to fields don't typecheck, an exception
+        will be thrown. ]
+    method consume(::?CLASS:D:) is raw {
+        $!type.^map_it_field:
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            :$!mode, :drop<less>, :keep<missing>
+    }
+
+    #|[ The list must have an arity lesser than or equal to the tuple type's;
+        if it's lesser, missing values will be stubbed (if possible).  If any
+        values don't typecheck as their corresponding fields, an exception will
+        be thrown. ]
+    method subsume(::?CLASS:D:) is raw {
+        $!type.^map_it_field:
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            :$!mode, :drop<more>, :keep<coercing>
+    }
+
+    #|[ Coerces a list. Arity does not matter; missing values are stubbed (if
+        possible) and extraneous values are stripped. If any values don't
+        typecheck as their corresponding fields, an exception will be thrown. ]
+    method coerce(::?CLASS:D:) is raw {
+        $!type.^map_it_field:
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            :$!mode, :drop<less>, :keep<coercing>
     }
 }
 

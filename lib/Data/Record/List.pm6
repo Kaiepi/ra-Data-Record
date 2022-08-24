@@ -8,100 +8,9 @@ use Data::Record::Exceptions;
 
 my constant &infix:<@~~> = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
 
-class Data::Record::List { ... }
+my class ListIterator { ... }
 
-#|[ Iterator for lists that are to become records. Classes that do this role
-    typecheck the list's values and coerce any of them that correspond to fields
-    that are records in some manner. ]
-my class ListIterator does Iterator {
-    has Data::Record::List:U $.type      is required;
-    has Data::Record::Mode:D $.mode      is required;
-    has Str:D                $.operation is required;
-    has Iterator:D           $!keys      is required;
-    has Iterator:D           $!fields    is required;
-    has Iterator:D           $!values    is required;
-
-    submethod BUILD(::?CLASS:D: :$type! is raw, :$!mode!, :$!operation!, :$values! --> Nil) {
-        $!type   := $type;
-        $!keys   := (0..*).iterator;
-        $!fields := (|$type.^fields xx *).iterator;
-        $!values := $values.iterator;
-    }
-
-    method new(::?CLASS:_: $type is raw, $mode, $operation, $values --> ::?CLASS:D) {
-        self.bless: :$type, :$mode, :$operation, :$values
-    }
-
-    method pull-one(::?CLASS:D:) is raw {
-        my $*operation := $!operation;
-        self."$!mode"()
-    }
-
-    method is-lazy(::?CLASS:D: --> Bool:D) {
-        $!values.is-lazy
-    }
-
-    #|[ If any value in the given list cannot typecheck, an exception will be
-        thrown; if the arity of the list does not match that of the record, it
-        will be considered to have missing fields and thus an exception will be
-        thrown. ]
-    method wrap(::?CLASS:D:) is raw {
-        $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
-            :$!mode, :drop<now>, :keep<missing>
-    }
-
-    #|[ Any fields that do not typecheck will be stripped from the list, but if
-        the arity of the list does not match that of the record, it will be
-        considered to have missing fields and thus an exception will be thrown. ]
-    method consume(::?CLASS:D:) is raw {
-        loop { return-rw $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
-            :$!mode, :drop<again>, :keep<missing> }
-    }
-
-    #|[ If any fields are missing from the list, they will be stubbed (if
-        possible), but if any fields do not typecheck, then an exception will
-        be thrown. Note that it's impossible for extraneous fields to exist in
-        a list. ]
-    method subsume(::?CLASS:D:) is raw {
-        $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
-            :$!mode, :drop<now>, :keep<coercing>
-    }
-
-    #|[ If any values in the given list cannot typecheck, they will be stripped
-        from the list; if any fields are missing from the given list, they will
-        be stubbed (if possible).  This should only throw if a definite field
-        is missing. ]
-    method coerce(::?CLASS:D:) is raw {
-        loop { return-rw $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
-            :$!mode, :drop<now>, :keep<coercing> }
-    }
-
-}
-
-#|[ Iterator for array ops taking lists of values (push/unshift/append/prepend).
-    This is mostly identical to ListIterator, but adds
-    behaviour to handle checking the arity of the list, which is handled in
-    such a way as to support lazy lists. ]
-my class ArrayIterator is ListIterator {
-    method push-all(::?CLASS:D: \target --> IterationEnd) {
-        my IterationBuffer \buffer .= new;
-        for 0..* -> $count is raw {
-            (my $result := self.pull-one) =:= IterationEnd
-              ?? last(target.append: buffer)
-              !! buffer.push($result)
-        }
-    }
-}
-#=[ Array ops can get passed lazy lists, though Array does not support
-    this. We can't throw X::Cannot::Lazy ourselves; what if someone defines
-    their own List subtype with methods that support them? Instead, we can
-    check the arity whenever this iterator's values get pushed onto the
-    relevant iterator of our record, so we have some way to check the
-    list's arity without using the elems method. ]
+my class ArrayIterator { ... }
 
 class Data::Record::List does Data::Record::Instance[List:D] does Iterable does Positional {
     has @!record is required;
@@ -369,6 +278,99 @@ class Data::Record::List does Data::Record::Instance[List:D] does Iterable does 
         next
     }
 }
+
+#|[ Iterator for lists that are to become records. Classes that do this role
+    typecheck the list's values and coerce any of them that correspond to fields
+    that are records in some manner. ]
+my class ListIterator does Iterator {
+    has Data::Record::List:U $.type      is required;
+    has Data::Record::Mode:D $.mode      is required;
+    has Str:D                $.operation is required;
+    has Iterator:D           $!keys      is required;
+    has Iterator:D           $!fields    is required;
+    has Iterator:D           $!values    is required;
+
+    submethod BUILD(::?CLASS:D: :$type! is raw, :$!mode!, :$!operation!, :$values! --> Nil) {
+        $!type   := $type;
+        $!keys   := (0..*).iterator;
+        $!fields := (|$type.^fields xx *).iterator;
+        $!values := $values.iterator;
+    }
+
+    method new(::?CLASS:_: $type is raw, $mode, $operation, $values --> ::?CLASS:D) {
+        self.bless: :$type, :$mode, :$operation, :$values
+    }
+
+    method pull-one(::?CLASS:D:) is raw {
+        my $*operation := $!operation;
+        self."$!mode"()
+    }
+
+    method is-lazy(::?CLASS:D: --> Bool:D) {
+        $!values.is-lazy
+    }
+
+    #|[ If any value in the given list cannot typecheck, an exception will be
+        thrown; if the arity of the list does not match that of the record, it
+        will be considered to have missing fields and thus an exception will be
+        thrown. ]
+    method wrap(::?CLASS:D:) is raw {
+        $!type.^map_it_field:
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            :$!mode, :drop<now>, :keep<missing>
+    }
+
+    #|[ Any fields that do not typecheck will be stripped from the list, but if
+        the arity of the list does not match that of the record, it will be
+        considered to have missing fields and thus an exception will be thrown. ]
+    method consume(::?CLASS:D:) is raw {
+        loop { return-rw $!type.^map_it_field:
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            :$!mode, :drop<again>, :keep<missing> }
+    }
+
+    #|[ If any fields are missing from the list, they will be stubbed (if
+        possible), but if any fields do not typecheck, then an exception will
+        be thrown. Note that it's impossible for extraneous fields to exist in
+        a list. ]
+    method subsume(::?CLASS:D:) is raw {
+        $!type.^map_it_field:
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            :$!mode, :drop<now>, :keep<coercing>
+    }
+
+    #|[ If any values in the given list cannot typecheck, they will be stripped
+        from the list; if any fields are missing from the given list, they will
+        be stubbed (if possible).  This should only throw if a definite field
+        is missing. ]
+    method coerce(::?CLASS:D:) is raw {
+        loop { return-rw $!type.^map_it_field:
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            :$!mode, :drop<now>, :keep<coercing> }
+    }
+
+}
+
+#|[ Iterator for array ops taking lists of values (push/unshift/append/prepend).
+    This is mostly identical to ListIterator, but adds
+    behaviour to handle checking the arity of the list, which is handled in
+    such a way as to support lazy lists. ]
+my class ArrayIterator is ListIterator {
+    method push-all(::?CLASS:D: \target --> IterationEnd) {
+        my IterationBuffer \buffer .= new;
+        for 0..* -> $count is raw {
+            (my $result := self.pull-one) =:= IterationEnd
+              ?? last(target.append: buffer)
+              !! buffer.push($result)
+        }
+    }
+}
+#=[ Array ops can get passed lazy lists, though Array does not support
+    this. We can't throw X::Cannot::Lazy ourselves; what if someone defines
+    their own List subtype with methods that support them? Instead, we can
+    check the arity whenever this iterator's values get pushed onto the
+    relevant iterator of our record, so we have some way to check the
+    list's arity without using the elems method. ]
 
 multi sub circumfix:<[@ @]>(+@fields is raw, Str :$name --> Mu) is export {
     my $obj := MetamodelX::RecorderHOW[

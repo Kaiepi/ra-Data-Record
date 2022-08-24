@@ -8,84 +8,7 @@ use Data::Record::Exceptions;
 
 my constant &infix:<@~~> = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
 
-class Data::Record::Map { ... }
-
-my class MapIterator does PredictiveIterator {
-    has Data::Record::Map:U  $.type      is required;
-    has Data::Record::Mode:D $.mode      is required;
-    has Str:D                $.meta      is required;
-    has Str:D                $.operation is required;
-    has Map:D                $.values    is required;
-    has Iterator:D           $!keys      is required;
-    has Int:D                $.arity     is required;
-
-    submethod BUILD(::?CLASS:D: :$type! is raw, :$!mode!, :$!meta, :$!operation!, :$values! is raw --> Nil) {
-        my $keys := $type.^fields.keys ∪ $values.keys;
-        $!type   := $type;
-        $!values := $values;
-        $!keys   := $keys.keys.iterator;
-        $!arity  := $keys.elems;
-    }
-
-    method new(::?CLASS:_: $type is raw, $meta, $mode, $operation, $values is raw --> ::?CLASS:D) {
-        self.bless: :$type, :$meta, :$mode, :$operation, :$values
-    }
-
-    method pull-one(::?CLASS:D:) is raw {
-        my $*operation = $!operation;
-        self."$!mode\-$!meta"()
-    }
-
-    method is-lazy(::?CLASS:D: --> False) { }
-
-    method count-only(::?CLASS:D: --> Int:D) { $!arity }
-
-    method map-one-pair(::?CLASS:D: *%named) is raw {
-        my $key := $!keys.pull-one;
-        $key =:= IterationEnd
-          ?? $key
-          !! ($key => $!type.^map_to_field: $key, $!values, |%named)
-    }
-
-    method wrap-structured(::?CLASS:D:) is raw {
-        self.map-one-pair: :drop<more>, :keep<missing>
-    }
-    method consume-structured(::?CLASS:D:) is raw {
-        loop { return-rw self.map-one-pair: :drop<again>, :keep<missing> }
-    }
-    method subsume-structured(::?CLASS:D:) is raw {
-        self.map-one-pair: :drop<more>, :keep<coercing>
-    }
-    method coerce-structured(::?CLASS:D:) is raw {
-        loop { return-rw self.map-one-pair: :drop<again>, :keep<coercing> }
-    }
-
-    method wrap-unstructured(::?CLASS:D:) is raw {
-        self.map-one-pair: :drop<none>, :keep<missing>
-    }
-    method consume-unstructured(::?CLASS:D:) is raw {
-        self.map-one-pair: :drop<none>, :keep<missing>
-    }
-    method subsume-unstructured(::?CLASS:D:) is raw {
-        self.map-one-pair: :drop<none>, :keep<coercing>
-    }
-    method coerce-unstructured(::?CLASS:D:) is raw {
-        self.map-one-pair: :drop<none>, :keep<coercing>
-    }
-
-    method wrap-bounded(::?CLASS:D:) is raw {
-        self.map-one-pair: :keep<none>
-    }
-    method consume-bounded(::?CLASS:D:) is raw {
-        self.map-one-pair: :keep<none>
-    }
-    method subsume-bounded(::?CLASS:D:) is raw {
-        self.map-one-pair: :keep<none>
-    }
-    method coerce-bounded(::?CLASS:D:) is raw {
-        self.map-one-pair: :keep<none>
-    }
-}
+my class MapIterator { ... }
 
 class Data::Record::Map does Data::Record::Instance[Map:D] does Iterable does Associative {
     has %.record is required;
@@ -328,6 +251,83 @@ class Data::Record::Map does Data::Record::Instance[Map:D] does Iterable does As
         X::Data::Record::Definite.new(:$type, :what<index>, :$key, :value($field)).throw
             if Metamodel::Primitives.is_type($field.HOW, Metamodel::DefiniteHOW) && $field.^definite;
         $field
+    }
+}
+
+my class MapIterator does PredictiveIterator {
+    has Data::Record::Map:U  $.type      is required;
+    has Data::Record::Mode:D $.mode      is required;
+    has Str:D                $.meta      is required;
+    has Str:D                $.operation is required;
+    has Map:D                $.values    is required;
+    has Iterator:D           $!keys      is required;
+    has Int:D                $.arity     is required;
+
+    submethod BUILD(::?CLASS:D: :$type! is raw, :$!mode!, :$!meta, :$!operation!, :$values! is raw --> Nil) {
+        my $keys := $type.^fields.keys ∪ $values.keys;
+        $!type   := $type;
+        $!values := $values;
+        $!keys   := $keys.keys.iterator;
+        $!arity  := $keys.elems;
+    }
+
+    method new(::?CLASS:_: $type is raw, $meta, $mode, $operation, $values is raw --> ::?CLASS:D) {
+        self.bless: :$type, :$meta, :$mode, :$operation, :$values
+    }
+
+    method pull-one(::?CLASS:D:) is raw {
+        my $*operation = $!operation;
+        self."$!mode\-$!meta"()
+    }
+
+    method is-lazy(::?CLASS:D: --> False) { }
+
+    method count-only(::?CLASS:D: --> Int:D) { $!arity }
+
+    method map-one-pair(::?CLASS:D: *%named) is raw {
+        my $key := $!keys.pull-one;
+        $key =:= IterationEnd
+          ?? $key
+          !! ($key => $!type.^map_to_field: $key, $!values, |%named)
+    }
+
+    method wrap-structured(::?CLASS:D:) is raw {
+        self.map-one-pair: :drop<more>, :keep<missing>
+    }
+    method consume-structured(::?CLASS:D:) is raw {
+        loop { return-rw self.map-one-pair: :drop<again>, :keep<missing> }
+    }
+    method subsume-structured(::?CLASS:D:) is raw {
+        self.map-one-pair: :drop<more>, :keep<coercing>
+    }
+    method coerce-structured(::?CLASS:D:) is raw {
+        loop { return-rw self.map-one-pair: :drop<again>, :keep<coercing> }
+    }
+
+    method wrap-unstructured(::?CLASS:D:) is raw {
+        self.map-one-pair: :drop<none>, :keep<missing>
+    }
+    method consume-unstructured(::?CLASS:D:) is raw {
+        self.map-one-pair: :drop<none>, :keep<missing>
+    }
+    method subsume-unstructured(::?CLASS:D:) is raw {
+        self.map-one-pair: :drop<none>, :keep<coercing>
+    }
+    method coerce-unstructured(::?CLASS:D:) is raw {
+        self.map-one-pair: :drop<none>, :keep<coercing>
+    }
+
+    method wrap-bounded(::?CLASS:D:) is raw {
+        self.map-one-pair: :keep<none>
+    }
+    method consume-bounded(::?CLASS:D:) is raw {
+        self.map-one-pair: :keep<none>
+    }
+    method subsume-bounded(::?CLASS:D:) is raw {
+        self.map-one-pair: :keep<none>
+    }
+    method coerce-bounded(::?CLASS:D:) is raw {
+        self.map-one-pair: :keep<none>
     }
 }
 
