@@ -1,72 +1,14 @@
 use v6.d;
 use MetamodelX::RecorderHOW;
-use MetamodelX::RecordHOW;
 use MetamodelX::RecordTemplateHOW;
 use MetamodelX::RecordLifter;
 use Data::Record::Mode;
 use Data::Record::Instance;
 use Data::Record::Exceptions;
 
-class Data::Record::Tuple { ... }
-
 my constant &infix:<@~~> = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
 
-role MetamodelX::RecordHOW[List ::F, Data::Record::Tuple ::D] does MetamodelX::RecorderHOW[F, D] {
-    has F $.fields is built(:bind) is required;
-    
-    #|[ A collection of fields for the record. ]
-    method fields(::?ROLE:D: $type is raw) { $!fields }
-    #=[ Its type is coupled to the delegate; if a Data::Record::Instance, that's also its type parameter. ]
-
-    method get_field($type is raw, $key is raw) { $!fields.AT-POS: $key }
-
-    method declares_field($type is raw, $key is raw) { $!fields.EXISTS-POS: $key }
-
-    method enforce_immutability(::THIS, $operation --> Nil) {
-        X::Data::Record::Immutable.new(:$operation, :type(THIS)).throw
-    }
-
-    method suggest_bounds(::THIS, $key is raw --> Exception:D) {
-        X::Data::Record::OutOfBounds.new: :type(THIS), :what<index>, :$key
-    }
-
-    method map_field($type is raw, $key is raw, Mu $value is raw, Data::Record::Mode:D :$mode = WRAP, :$drop = 'unbounded') is raw {
-        $!fields.EXISTS-POS($key)
-          ?? ($value @~~ $!fields.AT-POS($key) :$mode)
-          !! self."drop_$drop"($type, $key, $value)
-    }
-
-    method drop_unbounded(::THIS $type is raw, $key is raw, Mu $value is raw --> Nil) {
-        self.suggest_bounds($type, $key).throw
-    }
-
-    method map_it_field($type is raw, $key is raw, Mu $field is raw, Mu $value is raw, :$mode!, :$drop!, :$keep!) is raw {
-        $field =:= IterationEnd
-          ?? self."drop_it_$drop"($type, $key, $value)
-          !! $value =:= IterationEnd
-            ?? self."keep_it_$keep"($type, $key, $field)
-            !! ($value @~~ $field :$mode)
-    }
-
-    method drop_it_more($type is raw, $key is raw, Mu $value is raw --> IterationEnd) {
-        X::Data::Record::Extraneous.new(
-            :$*operation, :$type, :what<index>, :$key, :$value
-        ).throw unless $value =:= IterationEnd;
-    }
-
-    method drop_it_less(Mu, Mu, Mu --> IterationEnd) { }
-
-    method keep_it_missing($type is raw, $key is raw, Mu $field is raw --> IterationEnd) {
-        X::Data::Record::Missing.new(:$*operation, :$type, :what<index>, :$key, :$field).throw;
-    }
-
-    method keep_it_coercing($type is raw, $key is raw, Mu $field is raw) is raw {
-        X::Data::Record::Definite.new(
-            :$type, :what<index>, :$key, :value($field)
-        ).throw if $field.HOW.archetypes.definite && $field.^definite;
-        $field
-    }
-}
+class Data::Record::Tuple { ... }
 
 #|[ Iterator for tuples (lists of fixed length) that are to become records.
     Typechecks the list's values and coerces any record fields along the way. ]
@@ -287,13 +229,84 @@ class Data::Record::Tuple does Data::Record::Instance[List:D] does Iterable does
     multi method pairs(::?CLASS:D:) { @!record.pairs }
 
     multi method antipairs(::?CLASS:D:) { @!record.antipairs }
+
+    method ^get_field($type is raw, $key is raw) {
+        @.fields($type).AT-POS($key)
+    }
+
+    method ^declares_field($type is raw, $key is raw) {
+        @.fields($type).EXISTS-POS($key)
+    }
+
+    method ^enforce_immutability(::THIS, $operation --> Nil) {
+        X::Data::Record::Immutable.new(:$operation, :type(THIS)).throw
+    }
+
+    method ^suggest_bounds(::THIS, $key is raw --> Exception:D) {
+        X::Data::Record::OutOfBounds.new: :type(THIS), :what<index>, :$key
+    }
+
+    method ^map_field(
+        $type is raw, $key is raw, Mu $value is raw,
+        Data::Record::Mode:D :$mode = WRAP,
+        :$drop = 'unbounded'
+    ) is raw {
+        my @fields := self.fields: $type;
+        @fields.EXISTS-POS($key)
+          ?? ($value @~~ @fields.AT-POS($key) :$mode)
+          !! self."drop_$drop"($type, $key, $value)
+    }
+
+    method ^drop_unbounded(::THIS $type is raw, $key is raw, Mu $value is raw --> Nil) {
+        self.suggest_bounds($type, $key).throw
+    }
+
+    method ^map_it_field(
+        $type is raw, $key is raw, Mu $field is raw, Mu $value is raw,
+        :$mode!,
+        :$drop!,
+        :$keep!,
+    ) is raw {
+        $field =:= IterationEnd
+          ?? self."drop_it_$drop"($type, $key, $value)
+          !! $value =:= IterationEnd
+            ?? self."keep_it_$keep"($type, $key, $field)
+            !! ($value @~~ $field :$mode)
+    }
+
+    method ^drop_it_more($type is raw, $key is raw, Mu $value is raw --> IterationEnd) {
+        X::Data::Record::Extraneous.new(
+            :$*operation, :$type, :what<index>, :$key, :$value
+        ).throw unless $value =:= IterationEnd;
+    }
+
+    method ^drop_it_less(Mu, Mu, Mu --> IterationEnd) { }
+
+    method ^keep_it_missing($type is raw, $key is raw, Mu $field is raw --> IterationEnd) {
+        X::Data::Record::Missing.new(:$*operation, :$type, :what<index>, :$key, :$field).throw;
+    }
+
+    method ^keep_it_coercing($type is raw, $key is raw, Mu $field is raw) is raw {
+        X::Data::Record::Definite.new(
+            :$type, :what<index>, :$key, :value($field)
+        ).throw if $field.HOW.archetypes.definite && $field.^definite;
+        $field
+    }
 }
 
 multi sub circumfix:«<@ @>»(+@fields is raw, Str:_ :$name --> Mu) is export {
-    MetamodelX::RecordHOW[List:D, Data::Record::Tuple].new_type(@fields, :$name).^compose
+    my $obj := MetamodelX::RecorderHOW[
+        List:D, Data::Record::Tuple
+    ].new_type: @fields, :$name;
+    my $how := $obj.HOW;
+    $how.compose: $obj
 }
 multi sub circumfix:«<@ @>»(Block:D $block is raw, Str:_ :$name --> Mu) is export {
-    MetamodelX::RecordTemplateHOW[MetamodelX::RecordHOW[List:D, Data::Record::Tuple]].new_type: $block, :$name
+    my $obj := MetamodelX::RecordTemplateHOW[
+        MetamodelX::RecorderHOW[List:D, Data::Record::Tuple]
+    ].new_type: $block, :$name;
+    my $how := $obj.HOW;
+    $how.compose: $obj
 }
 
 multi sub infix:«(><)»(List:D $lhs is raw, Data::Record::Tuple:U $rhs is raw --> Data::Record::Tuple:D) is export {

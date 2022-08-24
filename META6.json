@@ -3,7 +3,7 @@
     "Ben Davies"
   ],
   "build-depends" : [ ],
-  "depends" : [ ],
+  "depends" : [ "annotations:auth<zef:Kaiepi>" ],
   "description" : "Record types!",
   "license" : "Artistic-2.0",
   "name" : "Data::Record",

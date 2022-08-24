@@ -1,5 +1,4 @@
 use v6.d;
-use MetamodelX::RecordHOW;
 use MetamodelX::RecorderHOW;
 use MetamodelX::RecordTemplateHOW;
 use MetamodelX::RecordLifter;
@@ -7,82 +6,9 @@ use Data::Record::Mode;
 use Data::Record::Instance;
 use Data::Record::Exceptions;
 
-class Data::Record::Map { ... }
-
 my constant &infix:<@~~> = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
 
-role MetamodelX::RecordHOW[Map ::F, Data::Record::Map ::D] does MetamodelX::RecorderHOW[Map, D] {
-    has F      $!fields       is built(:bind) is required;
-    has Bool() $!structural   is built = False;
-    has Str:D  $!metamode     = $!structural ?? 'unstructured' !! 'structured'; # FIXME: Inverted??? Come on.
-    has Str:D  $!drop_default = $!structural ?? 'none' !! 'unbounded';
-
-    method metamode(::?CLASS:D: $type is raw) { $!metamode }
-
-    method structural(::?CLASS:D: $type is raw) { $!structural }
-
-    method fields(::?CLASS:D: $type is raw) { $!fields }
-
-    method get_field(::?CLASS:D: $type is raw, $key is raw) {
-        $!fields.AT-KEY($key)
-    }
-
-    method declares_field(::?CLASS:D: $type is raw, $key is raw) {
-        $!fields.EXISTS-KEY($key)
-    }
-
-    method map_field(
-        $type is raw, $key is raw, Mu $value is raw,
-        Data::Record::Mode:D :$mode = WRAP, :$drop = $!drop_default
-    ) {
-        $!fields.EXISTS-KEY($key)
-          ?? ($value @~~ $!fields.AT-KEY($key) :$mode)
-          !! self."drop_$drop"($type, $key, $value)
-    }
-
-    method map_to_field(
-        $type is raw, $key is raw, Map:D $values is raw,
-        Data::Record::Mode:D :$mode = WRAP, :$drop = $!drop_default, :$keep!
-    ) is raw {
-        $!fields.EXISTS-KEY($key)
-          ?? $values.EXISTS-KEY($key)
-            ?? ($values.AT-KEY($key) @~~ $!fields.AT-KEY($key) :$mode)
-            !! self."keep_$keep"($type, $key, $!fields.AT-KEY($key))
-          !! self."drop_$drop"($type, $key, $values.AT-KEY($key))
-    }
-
-    method drop_none($type is raw, $key is raw, Mu $value is raw) is raw {
-        $value
-    }
-
-    method drop_unbounded($type is raw, $key is raw, Mu $value is raw) {
-        X::Data::Record::OutOfBounds.new(:$type, :what<key>, :$key).throw;
-        $value
-    }
-
-    method drop_more($type is raw, $key is raw, Mu $value is raw) is raw {
-        X::Data::Record::Extraneous.new(:$*operation, :$type, :what<key>, :$key, :$value).throw;
-        $value
-    }
-
-    method drop_again($type is raw, $key is raw, Mu $value is raw) is raw {
-        next;
-        $value
-    }
-
-    method keep_none($type is raw, $key is raw, Mu $field is raw --> Empty) { }
-
-    method keep_missing($type is raw, $key is raw, Mu $field is raw) {
-        X::Data::Record::Missing.new(:$*operation, :$type, :what<key>, :$key, :$field).throw;
-        self.keep_coercing: $type, $key, $field
-    }
-
-    method keep_coercing($type is raw, $key is raw, Mu $field is raw) {
-        X::Data::Record::Definite.new(:$type, :what<index>, :$key, :value($field)).throw
-            if Metamodel::Primitives.is_type($field.HOW, Metamodel::DefiniteHOW) && $field.^definite;
-        $field
-    }
-}
+class Data::Record::Map { ... }
 
 my class MapIterator does PredictiveIterator {
     has Data::Record::Map:U  $.type      is required;
@@ -325,16 +251,109 @@ class Data::Record::Map does Data::Record::Instance[Map:D] does Iterable does As
     multi method pairs(::?CLASS:D:) { %!record.pairs }
 
     multi method antipairs(::?CLASS:D:) { %!record.antipairs }
+
+    method ^annotations($? --> 1) { }
+
+    method ^structural($type is raw --> Bool:D) {
+        self.yield_annotations($type)[once self.annotation_offset($type)]<>
+    }
+
+    method ^metamode($type is raw) {
+        # XXX: Inverted?? Come on.
+        self.structural($type) ?? 'unstructured' !! 'structured'
+    }
+
+    method ^get_field($type is raw, $key is raw) {
+        my %fields := self.fields: $type;
+        %fields.AT-KEY($key)
+    }
+
+    method ^declares_field($type is raw, $key is raw) {
+        my %fields := self.fields: $type;
+        %fields.EXISTS-KEY($key)
+    }
+
+    method ^map_field(
+        $type is raw, $key is raw, Mu $value is raw,
+        Data::Record::Mode:D :$mode = WRAP,
+        :$drop = self.structural($type) ?? 'none' !! 'unbounded',
+    ) {
+        my %fields := self.fields: $type;
+        %fields.EXISTS-KEY($key)
+          ?? ($value @~~ %fields.AT-KEY($key) :$mode)
+          !! self."drop_$drop"($type, $key, $value)
+    }
+
+    method ^map_to_field(
+        $type is raw, $key is raw, Map:D $values is raw,
+        Data::Record::Mode:D :$mode = WRAP,
+        :$drop = self.structural($type) ?? 'none' !! 'unbounded',
+        :$keep!,
+    ) is raw {
+        my %fields := self.fields: $type;
+        %fields.EXISTS-KEY($key)
+          ?? $values.EXISTS-KEY($key)
+            ?? ($values.AT-KEY($key) @~~ %fields.AT-KEY($key) :$mode)
+            !! self."keep_$keep"($type, $key, %fields.AT-KEY($key))
+          !! self."drop_$drop"($type, $key, $values.AT-KEY($key))
+    }
+
+    method ^drop_none($type is raw, $key is raw, Mu $value is raw) is raw {
+        $value
+    }
+
+    method ^drop_unbounded($type is raw, $key is raw, Mu $value is raw) {
+        X::Data::Record::OutOfBounds.new(:$type, :what<key>, :$key).throw;
+        $value
+    }
+
+    method ^drop_more($type is raw, $key is raw, Mu $value is raw) is raw {
+        X::Data::Record::Extraneous.new(:$*operation, :$type, :what<key>, :$key, :$value).throw;
+        $value
+    }
+
+    method ^drop_again($type is raw, $key is raw, Mu $value is raw) is raw {
+        next;
+        $value
+    }
+
+    method ^keep_none($type is raw, $key is raw, Mu $field is raw --> Empty) { }
+
+    method ^keep_missing($type is raw, $key is raw, Mu $field is raw) {
+        X::Data::Record::Missing.new(:$*operation, :$type, :what<key>, :$key, :$field).throw;
+        self.keep_coercing: $type, $key, $field
+    }
+
+    method ^keep_coercing($type is raw, $key is raw, Mu $field is raw) {
+        X::Data::Record::Definite.new(:$type, :what<index>, :$key, :value($field)).throw
+            if Metamodel::Primitives.is_type($field.HOW, Metamodel::DefiniteHOW) && $field.^definite;
+        $field
+    }
 }
 
 multi sub circumfix:<{@ @}>(Map:D $fields, Str:_ :$name, Bool:D :$structural = False) is export {
-    MetamodelX::RecordHOW[Map:D, Data::Record::Map].new_type($fields<>, :$name, :$structural).^compose
+    my $obj := MetamodelX::RecorderHOW[
+        Map:D, Data::Record::Map
+    ].new_type: $fields<>, :$name;
+    my $how := $obj.HOW;
+    $how.yield_annotations($obj) = $structural;
+    $how.compose: $obj
 }
 multi sub circumfix:<{@ @}>(*@pairs, Str:_ :$name, Bool:D :$structural = False) is export {
-    MetamodelX::RecordHOW[Map:D, Data::Record::Map].new_type(Map.new(@pairs), :$name, :$structural).^compose
+    my $obj := MetamodelX::RecorderHOW[
+        Map:D, Data::Record::Map
+    ].new_type: Map.new(@pairs), :$name;
+    my $how := $obj.HOW;
+    $how.yield_annotations($obj) = $structural;
+    $how.compose: $obj
 }
 multi sub circumfix:<{@ @}>(Block:D $block, Str:_ :$name, Bool:D :$structural = False) is export {
-    MetamodelX::RecordTemplateHOW[MetamodelX::RecordHOW[Map:D, Data::Record::Map]].new_type: $block, :$name, :$structural
+    my $obj := MetamodelX::RecordTemplateHOW[
+        MetamodelX::RecorderHOW[Map:D, Data::Record::Map]
+    ].new_type: $block, :$name;
+    my $how := $obj.HOW;
+    $how.yield_annotations($obj) = $structural;
+    $how.compose: $obj
 }
 
 multi sub infix:«(><)»(Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {

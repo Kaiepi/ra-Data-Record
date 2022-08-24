@@ -7,15 +7,23 @@ use Test;
 
 plan 2;
 
+my class Instance { method method() { } }
+
+my class Recorder does MetamodelX::RecorderHOW[List:D, Instance] { }
+
 subtest 'MetamodelX::RecorderHOW', {
     plan 9;
 
-    my class Instance { method fields($? --> Empty) { } }
+    only term:<Anon> {
+        once MetamodelX::RecorderHOW[List, Instance].new_type(Empty).^compose
+    }
+    only term:<Named> {
+        once MetamodelX::RecorderHOW[List, Instance].new_type(Empty, :name<Named>).^compose
+    }
 
-    only term:<Anon> { once MetamodelX::RecorderHOW[List, Instance].new_type: Empty }
-    only term:<Named> { once MetamodelX::RecorderHOW[List, Instance].new_type: Empty, :name<Named> }
     lives-ok { Anon }, 'can create a recorder';
     lives-ok { Named }, 'can create a named recorder';
+    lives-ok { Named.method }, 'can invoke methods';
 
     is Anon.^name, '<anon record 1>', 'anonymous records generate a name';
     is Named.^name, 'Named', 'named records have theirs';
@@ -29,27 +37,22 @@ subtest 'MetamodelX::RecorderHOW', {
     lives-ok {
         Named ~~ -> Instance { }
     }, 'records can delegate typechecks';
-    cmp-ok Named.fields, &[=:=], Named.fields, 'can invoke methods';
 };
 
 subtest 'MetamodelX::RecordTemplateHOW', {
     plan 8;
 
-    my class Instance { method method() { } }
+    my &body_block := { $_ };
 
-    my class Recorder does MetamodelX::RecorderHOW[List, Instance] {
-        has $!fields is built(:bind);
-        method fields($?) { $!fields }
+    only term:<RecordTemplate> {
+        once MetamodelX::RecordTemplateHOW[Recorder].new_type(&body_block, :name<Record>).^compose
+    }
+    only term:<Record> {
+        once RecordTemplate.^parameterize(1)
     }
 
-    my &body_block := { $_ };
-    only term:<RecordTemplate> { once MetamodelX::RecordTemplateHOW[Recorder].new_type: &body_block, :name<Record> }
     lives-ok { RecordTemplate }, 'can create new record template types';
-
-    ok RecordTemplate.HOW.find_method(RecordTemplate, 'method'),
-      'can find methods on record templates, which are those of their delegate';
-
-    only term:<Record> { once RecordTemplate.^parameterize: 1 }
+    lives-ok { RecordTemplate.method }, 'can invoke methods on record template types';
     lives-ok { Record }, 'can parameterize record template types';
 
     cmp-ok Record.^template, &[=:=], RecordTemplate,

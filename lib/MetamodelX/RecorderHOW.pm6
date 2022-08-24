@@ -1,75 +1,60 @@
 use v6.d;
+use annotations::containers;
+use annotations::how;
+my atomicint $ID = 1;
 unit role MetamodelX::RecorderHOW[::F, ::D]
-     does Metamodel::Naming
-     does Metamodel::REPRComposeProtocol
-     does Metamodel::BaseType;
-
-has int    $!id          is built;
-has Mu     $!template    is built(:bind);
-has Bool:D $!is_composed = False;
-
-my constant ARCHETYPES = Metamodel::Archetypes.new: :nominal;
-method archetypes(::?ROLE:_: --> ARCHETYPES) { }
+     does MetamodelX::AnnotationHOW[Buffer, Metamodel::ClassHOW];
 
 #|[ The type of field. ]
-method for(::?ROLE:_: Mu $?) { F }
+method for(::?ROLE:_: Mu $?) is raw { F }
 
 #|[ A class to which to delegate method calls. ]
-method delegate(::?ROLE:_: Mu $?) { D }
+method delegate(::?ROLE:_: Mu $?) is raw { D }
 
-# XXX TODO: We can't define $!fields here. In fact, outside of the individual
-# collection HOWs, we shouldn't care about them at all in the MOP.
-my atomicint $next_id = 1;
-method new_type(::?ROLE:_: Mu $fields is raw, Str :$name, Mu :$template is raw, *%rest) {
-    my int $id   = !$name.DEFINITE && $next_id⚛++;
-    my Mu  $how := self.new: |%rest, :$fields, :$id, :$template;
-    my Mu  $obj := Metamodel::Primitives.create_type: $how, D.REPR;
-    $how.set_name: $obj, $id ?? "<anon record $id>" !! $name<>;
-    $obj
+method new_type(::?ROLE:_: F(Mu) $fields is raw, D $template? is raw, :$name, *%rest) is raw {
+    use nqp;
+    my uint $id = !$name.DEFINITE && $ID⚛++;
+    my $obj := callwith :name($id ?? "<anon record $id>" !! $name), |%rest;
+    my $how := $obj.HOW;
+    $how.yield_annotations($obj) = $id, $template, $fields;
+    nqp::settypecheckmode($obj, nqp::const::TYPE_CHECK_NEEDS_ACCEPTS)
 }
 
-method get_attribute_for_usage(::?ROLE:D: Mu, |meta) { D.^get_attribute_for_usage: |meta }
-
-method attributes(::?ROLE:D: Mu, |meta) { D.^attributes: |meta }
-
-method find_method(::?ROLE:D: Mu, |meta) { D.^find_method: |meta }
-
-method lookup(::?ROLE:D: Mu, |meta) { D.^lookup: |meta }
-
-method methods(::?ROLE:D: Mu, |meta) { D.^methods: |meta }
-
-method roles_to_compose(::?ROLE:D: Mu, |meta) { D.^roles_to_compose: |meta }
-
-method roles(::?ROLE:D: Mu, |meta) { D.^roles: |meta }
-
-method parents(::?ROLE:D: Mu, |meta) { D.^parents: |meta }
-
-method mro(::?ROLE:D: Mu, |meta) is raw {
-    my $mro := IterationBuffer.new;
-    $mro.push: $_ for D.^mro: |meta;
-    $mro
+method compose(::?ROLE:D: Mu $obj is raw) is raw {
+    self.add_parent: $obj, self.template: $obj unless self.is_composed: $obj;
+    callsame
 }
 
-method compose(::?ROLE:D: Mu $obj is raw) {
-    my $is_composed := cas $!is_composed, False, True;
-    self.compose_repr: $obj unless $is_composed;
-    $obj
+#|[ A number of annotations we promise to keep via this specific HOW. ]
+method annotations(::?ROLE:_: $? --> 3) { }
+#=[ MROish; typically called with .* dispatch. ]
+
+#|[ A position for a list of annotations for this metaobject. ]
+method annotation_offset(::?ROLE:_: Mu $obj? is raw --> Int:D) {
+    self.*annotations($obj).skip.sum
+}
+#=[ Depending on this in a subtype requires an annotations count to skip. ]
+
+#|[ The fields defining this record type. ]
+method fields(::?ROLE:D: Mu $obj is raw) is raw {
+    self.yield_annotations($obj)[2]<>
+}
+
+#|[ An origin for this record; should be the delegate by default. ]
+method template(::?ROLE:D: Mu $obj is raw) is raw {
+    self.yield_annotations($obj)[1]<>
 }
 
 #|[ An ID given to anonymous records. ]
-method id(::?ROLE:D: Mu --> int) { $!id }
-
-#|[ An optional record template. ]
-method template(::?ROLE:D: Mu) { $!template }
+method anonymous_id(::?ROLE:D: Mu $obj is raw --> uint) {
+    self.yield_annotations($obj)[0]<>
+}
 
 #|[ Whether or not this is an anonymous record. ]
-method is_anonymous(::?ROLE:D: Mu --> Bool:D) { ?$!id }
+method is_anonymous(::?ROLE:D: Mu $obj? is raw --> Bool:D) {
+    ?self.anonymous_id($obj)
+}
 
-#|[ Whether or not this record has been composed. ]
-method is_composed(::?ROLE:D: Mu) { $!is_composed }
-
-method type_check(::?ROLE:D: Mu $obj is raw, Mu $checkee is raw is copy --> int) {
-    use nqp;
-    nqp::eqaddr(self, $checkee.HOW)
-      || nqp::istype_nd(D, $checkee)
+method accepts_type(::?ROLE:D: Mu $obj is raw, Mu $checkee is raw --> int) {
+    Metamodel::Primitives.is_type($checkee, D) # Is it like our delegate?
 }

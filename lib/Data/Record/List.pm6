@@ -1,5 +1,4 @@
 use v6.e.PREVIEW;
-use MetamodelX::RecordHOW;
 use MetamodelX::RecorderHOW;
 use MetamodelX::RecordTemplateHOW;
 use MetamodelX::RecordLifter;
@@ -7,76 +6,9 @@ use Data::Record::Mode;
 use Data::Record::Instance;
 use Data::Record::Exceptions;
 
-class Data::Record::List { ... }
-
 my constant &infix:<@~~> = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
 
-role MetamodelX::RecordHOW[List ::F, Data::Record::List ::D] does MetamodelX::RecorderHOW[F, D] {
-    has $!fields is built(:bind) is required;
-
-    method new(::?CLASS:_: F :$fields! is raw, *%named) {
-        sink $fields.elems; # Reify, throwing any laziness failures.
-        self.bless: |%named, :$fields
-    }
-
-    method fields(::?CLASS:D: $?) { $!fields }
-
-    method arity(::?CLASS:D: $type is raw --> Int:D) {
-        $!fields.elems
-    }
-
-    method get_field(::?CLASS:D: $type is raw, $key is raw) {
-        $!fields.AT-POS: $key % $!fields.elems
-    }
-
-    method declares_field(::?CLASS:D: $type is raw, $key is raw) {
-        $!fields.EXISTS-POS: $key % $!fields.elems
-    }
-
-    method enforce_singleton($type is raw, Str:D $operation --> Nil) {
-        X::Data::Record::Missing.new(
-            :$operation, :$type, :what<index>, :key(0), :field(self.get_field: $type, 0)
-        ).throw unless $!fields.elems == 1;
-    }
-
-    method coerce_void($type is raw, $key is raw) {
-        my $field := self.get_field: $type, $key;
-        X::Data::Record::Definite.new(
-           :$type, :what<index>, :key($key % $!fields.elems), :value($field)
-        ).throw if $field.HOW.archetypes.definite && $field.^definite;
-        $field
-    }
-
-    method map_field($type is raw, $key is raw, Mu $value is raw, :$mode = WRAP, :$drop = 'now') is raw {
-        $!fields.EXISTS-POS($key % $!fields.elems)
-          ?? ($value @~~ $!fields.AT-POS($key % $!fields.elems) :$mode)
-          !! self."drop_$drop"($type, $key, $value)
-    }
-
-    method map_it_field($type is raw, $key is raw, Mu $field is raw, Mu $value is raw, :$mode!, :$keep!, :$drop!) is raw {
-        $value =:= IterationEnd
-          ?? self."keep_it_$keep"($type, $key, $field)
-          !! ($value @~~ $field :$mode)
-    }
-
-    method keep_it_missing($type is raw, $key is raw, Mu $field is raw --> IterationEnd) {
-        X::Data::Record::Missing.new(
-            :$*operation, :$type, :what<index>, :key($key % $!fields.elems), :$field
-        ).throw unless $key %% $!fields.elems;
-    }
-
-    method keep_it_coercing($type is raw, $key is raw, Mu $field is raw) {
-        $key %% $!fields.elems
-          ?? IterationEnd
-          !! self.coerce_void($type, $key)
-    }
-
-    method drop_it_now($type is raw, $key is raw, Mu $value is raw --> IterationEnd) { }
-
-    method drop_it_again($type is raw, $key is raw, Mu $value is raw --> IterationEnd) {
-        next
-    }
-}
+class Data::Record::List { ... }
 
 #|[ Iterator for lists that are to become records. Classes that do this role
     typecheck the list's values and coerce any of them that correspond to fields
@@ -115,7 +47,8 @@ my class ListIterator does Iterator {
         thrown. ]
     method wrap(::?CLASS:D:) is raw {
         $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one, :$!mode, :keep<missing>, :drop<now>
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            :$!mode, :drop<now>, :keep<missing>
     }
 
     #|[ Any fields that do not typecheck will be stripped from the list, but if
@@ -124,7 +57,8 @@ my class ListIterator does Iterator {
     method consume(::?CLASS:D:) is raw {
         loop {
             return-rw $!type.^map_it_field:
-                $!keys.pull-one, $!fields.pull-one, $!values.pull-one, :$!mode, :keep<missing>, :drop<again>
+                $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+                :$!mode, :drop<again>, :keep<missing>
         }
     }
 
@@ -134,7 +68,8 @@ my class ListIterator does Iterator {
         a list. ]
     method subsume(::?CLASS:D:) is raw {
         $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one, :$!mode, :keep<coercing>, :drop<now>
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            :$!mode, :drop<now>, :keep<coercing>
     }
 
     #|[ If any values in the given list cannot typecheck, they will be stripped
@@ -144,7 +79,8 @@ my class ListIterator does Iterator {
     method coerce(::?CLASS:D:) is raw {
         loop {
             return-rw $!type.^map_it_field:
-                $!keys.pull-one, $!fields.pull-one, $!values.pull-one, :$!mode, :keep<coercing>, :drop<again>
+                $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+                :$!mode, :drop<now>, :keep<coercing>
         }
     }
 
@@ -362,13 +298,94 @@ class Data::Record::List does Data::Record::Instance[List:D] does Iterable does 
     multi method pairs(::?CLASS:D:) { @!record.pairs }
 
     multi method antipairs(::?CLASS:D:) { @!record.antipairs }
+
+    method ^arity($type is raw --> Int:D) {
+        my @fields := self.fields: $type;
+        @fields.elems
+    }
+
+    method ^get_field($type is raw, $key is raw) {
+        my @fields := self.fields: $type;
+        @fields.AT-POS: $key % @fields.elems
+    }
+
+    method ^declares_field($type is raw, $key is raw) {
+        my @fields := self.fields: $type;
+        @fields.EXISTS-POS: $key % @fields.elems
+    }
+
+    method ^enforce_singleton($type is raw, Str:D $operation --> Nil) {
+        my @fields := self.fields: $type;
+        X::Data::Record::Missing.new(
+            :$operation, :$type, :what<index>, :key(0), :field(@fields[0])
+        ).throw unless @fields.elems == 1;
+    }
+
+    method ^coerce_void($type is raw, $key is raw) {
+        my @fields := self.fields: $type;
+        my $field  := @fields.AT-POS: $key % @fields.elems;
+        X::Data::Record::Definite.new(
+           :$type, :what<index>, :key($key % @fields.elems), :value($field)
+        ).throw if $field.HOW.archetypes.definite && $field.^definite;
+        $field
+    }
+
+    method ^map_field(
+        $type is raw, $key is raw, Mu $value is raw,
+        :$mode = WRAP,
+        :$drop = 'now'
+    ) is raw {
+        my @fields := self.fields: $type;
+        @fields.EXISTS-POS($key % @fields.elems)
+          ?? ($value @~~ @fields.AT-POS($key % @fields.elems) :$mode)
+          !! self."drop_$drop"($type, $key, $value)
+    }
+
+    method ^map_it_field(
+        $type is raw, $key is raw, Mu $field is raw, Mu $value is raw,
+        :$mode!,
+        :$keep!,
+        :$drop!
+    ) is raw {
+        $value =:= IterationEnd
+          ?? self."keep_it_$keep"($type, $key, $field)
+          !! ($value @~~ $field :$mode)
+    }
+
+    method ^keep_it_missing($type is raw, $key is raw, Mu $field is raw --> IterationEnd) {
+        my @fields := self.fields: $type;
+        X::Data::Record::Missing.new(
+            :$*operation, :$type, :what<index>, :key($key % @fields.elems), :$field
+        ).throw unless $key %% @fields.elems;
+    }
+
+    method ^keep_it_coercing($type is raw, $key is raw, Mu $field is raw) {
+        my @fields := self.fields: $type;
+        $key %% @fields.elems
+          ?? IterationEnd
+          !! self.coerce_void($type, $key)
+    }
+
+    method ^drop_it_now($type is raw, $key is raw, Mu $value is raw --> IterationEnd) { }
+
+    method ^drop_it_again($type is raw, $key is raw, Mu $value is raw --> IterationEnd) {
+        next
+    }
 }
 
 multi sub circumfix:<[@ @]>(+@fields is raw, Str :$name --> Mu) is export {
-    MetamodelX::RecordHOW[List:D, Data::Record::List].new_type(@fields, :$name).^compose
+    my $obj := MetamodelX::RecorderHOW[
+        List:D, Data::Record::List
+    ].new_type: @fields, :$name;
+    my $how := $obj.HOW;
+    $how.compose: $obj
 }
 multi sub circumfix:<[@ @]>(Block:D $block is raw, Str :$name --> Mu) is export {
-    MetamodelX::RecordTemplateHOW[MetamodelX::RecordHOW[List:D, Data::Record::List]].new_type: $block, :$name
+    my $obj := MetamodelX::RecordTemplateHOW[
+        MetamodelX::RecorderHOW[List:D, Data::Record::List]
+    ].new_type: $block, :$name;
+    my $how := $obj.HOW;
+    $how.compose: $obj
 }
 
 multi sub infix:«(><)»(List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
