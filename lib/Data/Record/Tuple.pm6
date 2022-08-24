@@ -44,7 +44,8 @@ my class TupleIterator does Iterator {
         will be thrown. ]
     method wrap(::?CLASS:D:) is raw {
         $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one, :$!mode, :drop<more>, :keep<missing>
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            :$!mode, :drop<more>, :keep<missing>
     }
 
     #|[ The list must have an arity greater than or equal to the tuple type; if
@@ -53,7 +54,8 @@ my class TupleIterator does Iterator {
         will be thrown. ]
     method consume(::?CLASS:D:) is raw {
         $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one, :$!mode, :drop<less>, :keep<missing>
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            :$!mode, :drop<less>, :keep<missing>
     }
 
     #|[ The list must have an arity lesser than or equal to the tuple type's;
@@ -62,7 +64,8 @@ my class TupleIterator does Iterator {
         be thrown. ]
     method subsume(::?CLASS:D:) is raw {
         $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one, :$!mode, :drop<more>, :keep<coercing>
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            :$!mode, :drop<more>, :keep<coercing>
     }
 
     #|[ Coerces a list. Arity does not matter; missing values are stubbed (if
@@ -70,7 +73,8 @@ my class TupleIterator does Iterator {
         typecheck as their corresponding fields, an exception will be thrown. ]
     method coerce(::?CLASS:D:) is raw {
         $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one, :$!mode, :drop<less>, :keep<coercing>
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            :$!mode, :drop<less>, :keep<coercing>
     }
 }
 
@@ -280,7 +284,9 @@ class Data::Record::Tuple does Data::Record::Instance[List:D] does Iterable does
         ).throw unless $value =:= IterationEnd;
     }
 
-    method ^drop_it_less(Mu, Mu, Mu --> IterationEnd) { }
+    method ^drop_it_less(Mu, Mu, Mu --> IterationEnd) {
+        # Follow through on a return.
+    }
 
     method ^keep_it_missing($type is raw, $key is raw, Mu $field is raw --> IterationEnd) {
         X::Data::Record::Missing.new(:$*operation, :$type, :what<index>, :$key, :$field).throw;
