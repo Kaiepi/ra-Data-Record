@@ -55,11 +55,9 @@ my class ListIterator does Iterator {
         the arity of the list does not match that of the record, it will be
         considered to have missing fields and thus an exception will be thrown. ]
     method consume(::?CLASS:D:) is raw {
-        loop {
-            return-rw $!type.^map_it_field:
-                $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
-                :$!mode, :drop<again>, :keep<missing>
-        }
+        loop { return-rw $!type.^map_it_field:
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            :$!mode, :drop<again>, :keep<missing> }
     }
 
     #|[ If any fields are missing from the list, they will be stubbed (if
@@ -77,11 +75,9 @@ my class ListIterator does Iterator {
         be stubbed (if possible).  This should only throw if a definite field
         is missing. ]
     method coerce(::?CLASS:D:) is raw {
-        loop {
-            return-rw $!type.^map_it_field:
-                $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
-                :$!mode, :drop<now>, :keep<coercing>
-        }
+        loop { return-rw $!type.^map_it_field:
+            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            :$!mode, :drop<now>, :keep<coercing> }
     }
 
 }
@@ -330,26 +326,25 @@ class Data::Record::List does Data::Record::Instance[List:D] does Iterable does 
         $field
     }
 
-    method ^map_field(
-        $type is raw, $key is raw, Mu $value is raw,
-        :$mode = WRAP,
-        :$drop = 'now'
-    ) is raw {
+    method ^map_field($type is raw, $key is raw, Mu $value is raw, :$mode = WRAP) is raw {
         my @fields := self.fields: $type;
         @fields.EXISTS-POS($key % @fields.elems)
           ?? ($value @~~ @fields.AT-POS($key % @fields.elems) :$mode)
-          !! self."drop_$drop"($type, $key, $value)
+          !! $value
     }
 
     method ^map_it_field(
         $type is raw, $key is raw, Mu $field is raw, Mu $value is raw,
         :$mode!,
         :$keep!,
-        :$drop!
+        :$drop!,
     ) is raw {
+        my @fields := self.fields: $type;
         $value =:= IterationEnd
           ?? self."keep_it_$keep"($type, $key, $field)
-          !! ($value @~~ $field :$mode)
+          !! @fields.EXISTS-POS($key % @fields.elems)
+            ?? ($value @~~ $field :$mode)
+            !! self."drop_it_$drop"($type, $key, $field)
     }
 
     method ^keep_it_missing($type is raw, $key is raw, Mu $field is raw --> IterationEnd) {
@@ -366,7 +361,9 @@ class Data::Record::List does Data::Record::Instance[List:D] does Iterable does 
           !! self.coerce_void($type, $key)
     }
 
-    method ^drop_it_now($type is raw, $key is raw, Mu $value is raw --> IterationEnd) { }
+    method ^drop_it_now($type is raw, $key is raw, Mu $value is raw --> IterationEnd) {
+        # Follow through on a return.
+    }
 
     method ^drop_it_again($type is raw, $key is raw, Mu $value is raw --> IterationEnd) {
         next
