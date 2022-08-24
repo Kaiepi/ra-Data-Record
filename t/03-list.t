@@ -7,7 +7,7 @@ use Test;
 plan 4;
 
 subtest 'basic', {
-    plan 53;
+    plan 55;
 
     my Str:D $name = 'IntList';
     sub term:<IntList> { once [@ Int:D @]:$name }
@@ -32,6 +32,10 @@ subtest 'basic', {
     lives-ok {
         (1,) (<<) IntList
     }, '(<<) lives for acceptable lists';
+    throws-like {
+        (1,'2',) (<<) IntList
+    }, X::Data::Record::TypeCheck,
+        '(<<) throws for unacceptable lists';
 
     lives-ok {
         (1,) (>>) IntList
@@ -44,6 +48,10 @@ subtest 'basic', {
     lives-ok {
         (1,) (<>) IntList
     }, '(<>) lives for acceptable lists';
+    throws-like {
+        (1,'2',) (<>) IntList
+    }, X::Data::Record::TypeCheck,
+        '(<>) throws for unacceptable lists';
 
     lives-ok {
         (1,) (><) IntList
