@@ -10,16 +10,12 @@ subtest 'non-structural', {
     plan 3;
 
     subtest 'basic', {
-        plan 48;
+        plan 47;
 
         my Str:D $name = 'NameMap';
         sub term:<NameMap> { once ({@ name => Str:D @}:$name) }
 
         lives-ok { NameMap }, 'can create record map types';
-        throws-like {
-            {@{ foo => Int:D }@}
-        }, X::Data::Record::Block,
-          'cannot create record map types with hashes';
 
         is NameMap.^name, $name,
           'names get passed around when creating record map types OK';
@@ -244,16 +240,12 @@ subtest 'structural', {
     plan 3;
 
     subtest 'basic', {
-        plan 49;
+        plan 48;
 
         my Str:D $name = 'NameMap';
         sub term:<NameMap> { once ({@ name => Str:D @}:structural:$name) }
 
         lives-ok { NameMap }, 'can create structural record map types';
-        throws-like {
-            {@{ foo => Int:D }@} :structural
-        }, X::Data::Record::Block,
-          'cannot create structural record map types with hashes';
 
         is NameMap.^name, $name,
           'names get passed around when creating structural record map types OK';

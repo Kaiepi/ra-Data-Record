@@ -7,7 +7,7 @@ use Test;
 plan 4;
 
 subtest 'basic', {
-    plan 55;
+    plan 53;
 
     my Str:D $name = 'IntList';
     sub term:<IntList> { once [@ Int:D @]:$name }
@@ -32,9 +32,6 @@ subtest 'basic', {
     lives-ok {
         (1,) (<<) IntList
     }, '(<<) lives for acceptable lists';
-    lives-ok {
-        (1,'2',) (<<) IntList
-    }, '(<<) consumes unacceptable values in lists';
 
     lives-ok {
         (1,) (>>) IntList
@@ -47,9 +44,6 @@ subtest 'basic', {
     lives-ok {
         (1,) (<>) IntList
     }, '(<>) lives for acceptable lists';
-    lives-ok {
-        (1,'2',) (<>) IntList
-    }, '(<>) coerces lists';
 
     lives-ok {
         (1,) (><) IntList

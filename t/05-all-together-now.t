@@ -52,7 +52,7 @@ subtest 'records', {
     lives-ok {
         my % := {
            name  => %data<name>,
-           items => (|%data<items>, (2,))
+           items => %data<items>,
         } (<<) Schema;
     }, 'can instantiate a record type with a consumed record';
     lives-ok {
