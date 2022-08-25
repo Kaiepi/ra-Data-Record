@@ -6,21 +6,24 @@ my atomicint $ID = 1;
 unit role MetamodelX::RecordTemplateHOW[MetamodelX::RecorderHOW ::P]
      does MetamodelX::AnnotationHOW[Buffer, Metamodel::ClassHOW];
 
-my constant N-ARCHETYPES = Metamodel::Archetypes.new: :nominal, :parametric, :inheritable, :augmentable;
-my constant G-ARCHETYPES = Metamodel::Archetypes.new: :nominal, :parametric, :generic, :inheritable, :augmentable;
-
 my \F = P.for;
 my \D = P.delegate;
+
+#|[ The type of field. ]
+method for(::?ROLE:_: Mu $?) { F }
+
+#|[ A class to which to delegate method calls. ]
+method delegate(::?ROLE:_: Mu $?) { D }
+
+#|[ A HOW with which to produce a record type. ]
+method recorder(::?ROLE:_: Mu $?) { P }
+
+my constant N-ARCHETYPES = Metamodel::Archetypes.new: :nominal, :parametric, :inheritable, :augmentable;
+my constant G-ARCHETYPES = Metamodel::Archetypes.new: :nominal, :parametric, :generic, :inheritable, :augmentable;
 
 proto method archetypes(::?ROLE:_: $?, $? --> Metamodel::Archetypes:D) {*}
 multi method archetypes(::?ROLE:U: --> N-ARCHETYPES) { }
 multi method archetypes(::?ROLE:D: Mu $?, Metamodel::Archetypes:_ $archetypes?) { once $archetypes }
-
-method for(::?ROLE:_: Mu $?) { F }
-
-method delegate(::?ROLE:_: Mu $?) { D }
-
-method recorder(::?ROLE:_: Mu $?) { P }
 
 method new_type(::?ROLE:_: Block:D $body_block is raw, Str :$name, *%rest) {
     my uint $id = !$name.DEFINITE && $ID⚛++;
@@ -50,11 +53,21 @@ method higher_annotation_offset(::?ROLE:_: Mu $obj? is raw --> Int:D) {
     self.*higher_annotations($obj).skip.sum
 }
 
-method body_block(::?ROLE:D: Mu $obj is raw --> Block:D) { self.yield_annotations($obj)[1]<> }
+#|[ A block accepting type arguments, returning a record type's fields. ]
+method body_block(::?ROLE:D: Mu $obj is raw --> Block:D) {
+    self.yield_annotations($obj)[1]<>
+}
+#=[ Completes the record template, allowing it to produce a true record type. ] 
 
-method anonymous_id(::?ROLE:D: Mu $obj is raw --> int) { self.yield_annotations($obj)[0]<> }
+#|[ An ID given to anonymous record templates. ]
+method anonymous_id(::?ROLE:D: Mu $obj is raw --> uint) {
+    self.yield_annotations($obj)[0]<>
+}
 
-method is_anonymous(::?ROLE:D: Mu $obj is raw --> Bool:D) { ?self.anonymous_id: $obj }
+#|[ Whether or not this is an anonymous record template. ]
+method is_anonymous(::?ROLE:D: Mu $obj is raw --> Bool:D) {
+    ?self.anonymous_id: $obj
+}
 
 method parameterize(::?ROLE:D: Mu $obj is raw, |args) is raw {
     my $encoded := IterationBuffer.new;
