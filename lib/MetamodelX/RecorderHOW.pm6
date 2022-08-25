@@ -12,13 +12,16 @@ method for(::?ROLE:_: Mu $?) is raw { F }
 method delegate(::?ROLE:_: Mu $?) is raw { D }
 
 method new_type(::?ROLE:_: F(Mu) $fields is raw, D $template? is raw, :$name, *%rest) is raw {
-    use nqp;
     my uint $id = !$name.DEFINITE && $ID⚛++;
     my $obj := callwith :name($id ?? "<anon record $id>" !! $name), |%rest;
     my $how := $obj.HOW;
     $how.yield_annotations($obj) = $id, $template, $fields;
     $how.add_parent: $obj, $template;
-    nqp::settypecheckmode($obj, nqp::const::TYPE_CHECK_NEEDS_ACCEPTS)
+    $obj
+}
+
+method publish_type_cache(::?ROLE:D: Mu $obj is raw) is raw {
+    Metamodel::Primitives.configure_type_checking: $obj, self.mro($obj).map({ slip $_, |$_.^role_typecheck_list })
 }
 
 #|[ A number of annotations we promise to keep via this specific HOW. ]
@@ -49,8 +52,4 @@ method anonymous_id(::?ROLE:D: Mu $obj is raw --> uint) {
 #|[ Whether or not this is an anonymous record. ]
 method is_anonymous(::?ROLE:D: Mu $obj? is raw --> Bool:D) {
     ?self.anonymous_id($obj)
-}
-
-method accepts_type(::?ROLE:D: Mu $obj is raw, Mu $checkee is raw --> int) {
-    Metamodel::Primitives.is_type($checkee, D) # Is it like our delegate?
 }

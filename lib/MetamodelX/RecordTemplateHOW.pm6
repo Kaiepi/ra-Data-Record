@@ -23,7 +23,6 @@ method delegate(::?ROLE:_: Mu $?) { D }
 method recorder(::?ROLE:_: Mu $?) { P }
 
 method new_type(::?ROLE:_: Block:D $body_block is raw, Str :$name, *%rest) {
-    use nqp;
     my uint $id = !$name.DEFINITE && $ID⚛++;
     my $obj := callwith :name($id ?? "<anon record template $id>" !! $name), |%rest;
     my $how := $obj.HOW;
@@ -31,7 +30,11 @@ method new_type(::?ROLE:_: Block:D $body_block is raw, Str :$name, *%rest) {
     $how.yield_annotations($obj) = $id, $body_block;
     $how.add_parent: $obj, D;
     Metamodel::Primitives.set_parameterizer($obj, &RECORD-PARAMETERIZER);
-    nqp::settypecheckmode($obj, nqp::const::TYPE_CHECK_NEEDS_ACCEPTS);
+    $obj
+}
+
+method publish_type_cache(::?ROLE:D: Mu $obj is raw) is raw {
+    Metamodel::Primitives.configure_type_checking: $obj, self.mro($obj).map({ slip $_, |$_.^role_typecheck_list })
 }
 
 method body_block(::?ROLE:D: Mu $obj is raw --> Block:D) { self.yield_annotations($obj)[1]<> }
@@ -69,8 +72,4 @@ method instantiate_generic(::?ROLE:D: Mu $obj is raw, Mu $type_env is raw) {
     $delegate   := $delegate.^instantiate_generic: $type_env if $delegate.^is_generic;
     $body_block := $body_block.instantiate_generic: $type_env if $body_block.is_generic;
     self.new_type: $delegate, $body_block, :$name
-}
-
-method accepts_type(::?ROLE:D: Mu $obj is raw, Mu $checkee is raw --> int) {
-    Metamodel::Primitives.is_type($checkee, D) # Is it like our delegate?
 }
