@@ -17,12 +17,8 @@ method new_type(::?ROLE:_: F(Mu) $fields is raw, D $template? is raw, :$name, *%
     my $obj := callwith :name($id ?? "<anon record $id>" !! $name), |%rest;
     my $how := $obj.HOW;
     $how.yield_annotations($obj) = $id, $template, $fields;
+    $how.add_parent: $obj, $template;
     nqp::settypecheckmode($obj, nqp::const::TYPE_CHECK_NEEDS_ACCEPTS)
-}
-
-method compose(::?ROLE:D: Mu $obj is raw) is raw {
-    self.add_parent: $obj, self.template: $obj unless self.is_composed: $obj;
-    callsame
 }
 
 #|[ A number of annotations we promise to keep via this specific HOW. ]
