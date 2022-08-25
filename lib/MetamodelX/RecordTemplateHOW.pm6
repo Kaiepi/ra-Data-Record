@@ -6,8 +6,8 @@ my atomicint $ID = 1;
 unit role MetamodelX::RecordTemplateHOW[MetamodelX::RecorderHOW ::P]
      does MetamodelX::AnnotationHOW[Buffer, Metamodel::ClassHOW];
 
-my constant N-ARCHETYPES = Metamodel::Archetypes.new: :nominal, :parametric;
-my constant G-ARCHETYPES = Metamodel::Archetypes.new: :nominal, :parametric, :generic;
+my constant N-ARCHETYPES = Metamodel::Archetypes.new: :nominal, :parametric, :inheritable, :augmentable;
+my constant G-ARCHETYPES = Metamodel::Archetypes.new: :nominal, :parametric, :generic, :inheritable, :augmentable;
 
 my \F = P.for;
 my \D = P.delegate;
