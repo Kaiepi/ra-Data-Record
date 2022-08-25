@@ -34,7 +34,10 @@ method new_type(::?ROLE:_: Block:D $body_block is raw, Str :$name, *%rest) {
 }
 
 method publish_type_cache(::?ROLE:D: Mu $obj is raw) is raw {
-    Metamodel::Primitives.configure_type_checking: $obj, self.mro($obj).map({ slip $_, |$_.^role_typecheck_list })
+    use nqp;
+    Metamodel::Primitives.configure_type_checking: $obj, self.mro($obj).map({
+        slip $_, do |$_.^role_typecheck_list if nqp::can($_.HOW, 'role_typecheck_list')
+    })
 }
 
 method body_block(::?ROLE:D: Mu $obj is raw --> Block:D) { self.yield_annotations($obj)[1]<> }

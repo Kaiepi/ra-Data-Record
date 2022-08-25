@@ -21,7 +21,10 @@ method new_type(::?ROLE:_: F(Mu) $fields is raw, D $template? is raw, :$name, *%
 }
 
 method publish_type_cache(::?ROLE:D: Mu $obj is raw) is raw {
-    Metamodel::Primitives.configure_type_checking: $obj, self.mro($obj).map({ slip $_, |$_.^role_typecheck_list })
+    use nqp;
+    Metamodel::Primitives.configure_type_checking: $obj, self.mro($obj).map({
+        slip $_, do |$_.^role_typecheck_list if nqp::can($_.HOW, 'role_typecheck_list')
+    })
 }
 
 #|[ A number of annotations we promise to keep via this specific HOW. ]
