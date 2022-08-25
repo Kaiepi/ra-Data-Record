@@ -40,6 +40,16 @@ method publish_type_cache(::?ROLE:D: Mu $obj is raw) is raw {
     })
 }
 
+#|[ A number of annotations we promise to keep via this specific parametric HOW. ]
+method higher_annotations(::?ROLE:_: $? --> 2) { }
+#=[ This is separate from MetamodelX::AnnotationHOW's annotations because those
+    types have the delegate as a parent ordinarily. ]
+
+#|[ A position for a list of higher annotations for this metaobject. ]
+method higher_annotation_offset(::?ROLE:_: Mu $obj? is raw --> Int:D) {
+    self.*higher_annotations($obj).skip.sum
+}
+
 method body_block(::?ROLE:D: Mu $obj is raw --> Block:D) { self.yield_annotations($obj)[1]<> }
 
 method anonymous_id(::?ROLE:D: Mu $obj is raw --> int) { self.yield_annotations($obj)[0]<> }
@@ -60,7 +70,7 @@ method !do_parameterization(Mu $template is raw, @encoded) is raw {
     my $name := self.name($template) ~ '[' ~ @$args.map(*.raku).join(', ') ~ ']';
     my $obj  := P.new_type: self.body_block($template)(|$args), $template, :$name;
     my $how  := $obj.HOW;
-    $how.yield_annotations($obj) = self.yield_annotations($template).skip(2);
+    $how.yield_annotations($obj) = self.yield_annotations($template).skip(self.*higher_annotations($template).sum);
     $how.compose: $obj
 }
 
