@@ -43,16 +43,16 @@ method anonymous_id(::?ROLE:D: Mu $obj is raw --> int) { self.yield_annotations(
 
 method is_anonymous(::?ROLE:D: Mu $obj is raw --> Bool:D) { ?self.anonymous_id: $obj }
 
-method parameterize(::?ROLE:D: Mu $obj is raw, |args) {
+method parameterize(::?ROLE:D: Mu $obj is raw, |args) is raw {
     my $encoded := IterationBuffer.new;
     $encoded.push: %(args) || my constant EMPTY = Map.new;
     $encoded.push: $_ for @(args);
     Metamodel::Primitives.parameterize_type: $obj, $encoded.List
 }
-sub RECORD-PARAMETERIZER(Mu $obj is raw, @encoded) {
+sub RECORD-PARAMETERIZER(Mu $obj is raw, @encoded) is raw {
     $obj.HOW!do_parameterization: $obj, @encoded
 }
-method !do_parameterization(Mu $template is raw, @encoded) {
+method !do_parameterization(Mu $template is raw, @encoded) is raw {
     my $args := Capture.new: :list(@encoded.skip), :hash(@encoded.head);
     my $name := self.name($template) ~ '[' ~ @$args.map(*.raku).join(', ') ~ ']';
     my $obj  := P.new_type: self.body_block($template)(|$args), $template, :$name;
