@@ -57,7 +57,7 @@ method !do_parameterization(Mu $template is raw, @encoded) {
     my $name := self.name($template) ~ '[' ~ @$args.map(*.raku).join(', ') ~ ']';
     my $obj  := P.new_type: self.body_block($template)(|$args), $template, :$name;
     my $how  := $obj.HOW;
-    $how.yield_annotations($obj) = $template.^yield_annotations.skip: 3;
+    $how.yield_annotations($obj) = self.yield_annotations($template).skip(2);
     $how.compose: $obj
 }
 
