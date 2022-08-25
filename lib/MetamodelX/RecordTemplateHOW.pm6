@@ -27,9 +27,9 @@ method new_type(::?ROLE:_: Block:D $body_block is raw, Str :$name, *%rest) {
     my uint $id = !$name.DEFINITE && $ID⚛++;
     my $obj := callwith :name($id ?? "<anon record template $id>" !! $name), |%rest;
     my $how := $obj.HOW;
-    $how.add_parent: $obj, D;
     $how.archetypes: $obj, P.archetypes.generic || $body_block.is_generic ?? G-ARCHETYPES !! N-ARCHETYPES;
     $how.yield_annotations($obj) = $id, $body_block;
+    $how.add_parent: $obj, D;
     Metamodel::Primitives.set_parameterizer($obj, &RECORD-PARAMETERIZER);
     nqp::settypecheckmode($obj, nqp::const::TYPE_CHECK_NEEDS_ACCEPTS);
 }
