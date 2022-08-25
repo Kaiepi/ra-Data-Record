@@ -87,15 +87,11 @@ method !do_parameterization(Mu $template is raw, @encoded) is raw {
     $how.compose: $obj
 }
 
-method is_generic(::?ROLE:D: Mu $obj is raw --> int) {
-    P.archetypes.generic || self.body_block($obj).is_generic
-}
-
 method instantiate_generic(::?ROLE:D: Mu $obj is raw, Mu $type_env is raw) {
     my $name       := self.name: $obj;
     my $delegate   := D;
     my $body_block := self.body_block: $obj;
-    $delegate   := $delegate.^instantiate_generic: $type_env if $delegate.^is_generic;
+    $delegate   := $delegate.^instantiate_generic: $type_env if $delegate.HOW.archetypes.generic;
     $body_block := $body_block.instantiate_generic: $type_env if $body_block.is_generic;
     self.new_type: $delegate, $body_block, :$name
 }
