@@ -35,7 +35,7 @@ method annotations(::?ROLE:_: $? --> 3) { }
 method annotation_offset(::?ROLE:_: Mu $obj? is raw --> Int:D) {
     self.*annotations($obj).skip.sum
 }
-#=[ Depending on this in a subtype requires an annotations count to skip. ]
+#=[ Depending on this in a subtype requires an annotations offset to skip. ]
 
 #|[ The fields defining this record type. ]
 method fields(::?ROLE:D: Mu $obj is raw) is raw {

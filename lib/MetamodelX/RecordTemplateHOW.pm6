@@ -45,13 +45,15 @@ method publish_type_cache(::?ROLE:D: Mu $obj is raw) is raw {
 
 #|[ A number of annotations we promise to keep via this specific parametric HOW. ]
 method higher_annotations(::?ROLE:_: $? --> 2) { }
-#=[ This is separate from MetamodelX::AnnotationHOW's annotations because those
+#=[ This is separate from MetamodelX::RecorderHOW's annotations because those
     types have the delegate as a parent ordinarily. ]
 
 #|[ A position for a list of higher annotations for this metaobject. ]
 method higher_annotation_offset(::?ROLE:_: Mu $obj? is raw --> Int:D) {
     self.*higher_annotations($obj).skip.sum
 }
+#=[ Depending on this in a subtype requires a higher annotations offset to
+    skip. ]
 
 #|[ A block accepting type arguments, returning a record type's fields. ]
 method body_block(::?ROLE:D: Mu $obj is raw --> Block:D) {
