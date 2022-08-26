@@ -21,16 +21,18 @@ method recorder(::?ROLE:_: Mu $?) { P }
 my constant N-ARCHETYPES = Metamodel::Archetypes.new: :nominal, :parametric, :inheritable, :augmentable;
 my constant G-ARCHETYPES = Metamodel::Archetypes.new: :nominal, :parametric, :generic, :inheritable, :augmentable;
 
-proto method archetypes(::?ROLE:_: $?, $? --> Metamodel::Archetypes:D) {*}
-multi method archetypes(::?ROLE:U: --> N-ARCHETYPES) { }
-multi method archetypes(::?ROLE:D: Mu $?, Metamodel::Archetypes:_ $archetypes?) { once $archetypes }
+proto method archetypes(::?ROLE:_: $? --> Metamodel::Archetypes:D) {*}
+multi method archetypes(::?ROLE:U: $? --> N-ARCHETYPES) { }
+multi method archetypes(::?ROLE:D: $?) {
+    self.ANN[0]<>
+}
 
 method new_type(::?ROLE:_: Block:D $body_block is raw, Str :$name, *%rest) {
     my uint $id = !$name.DEFINITE && $ID⚛++;
     my $obj := callwith :name($id ?? "<anon record template $id>" !! $name), |%rest;
     my $how := $obj.HOW;
-    $how.archetypes: $obj, P.archetypes.generic || $body_block.is_generic ?? G-ARCHETYPES !! N-ARCHETYPES;
-    $how.yield_annotations($obj) = $id, $body_block;
+    my $archetypes := P.archetypes.generic || $body_block.is_generic ?? G-ARCHETYPES !! N-ARCHETYPES;
+    $how.ANN = $archetypes, $id, $body_block;
     $how.add_parent: $obj, D;
     Metamodel::Primitives.set_parameterizer($obj, &RECORD-PARAMETERIZER);
     $obj
@@ -44,7 +46,7 @@ method publish_type_cache(::?ROLE:D: Mu $obj is raw) is raw {
 }
 
 #|[ A number of annotations we promise to keep via this specific parametric HOW. ]
-method higher_annotations(::?ROLE:_: $? --> 2) { }
+method higher_annotations(::?ROLE:_: $? --> 3) { }
 #=[ This is separate from MetamodelX::RecorderHOW's annotations because those
     types have the delegate as a parent ordinarily. ]
 
@@ -57,13 +59,13 @@ method higher_annotation_offset(::?ROLE:_: Mu $obj? is raw --> Int:D) {
 
 #|[ A block accepting type arguments, returning a record type's fields. ]
 method body_block(::?ROLE:D: Mu $obj is raw --> Block:D) {
-    self.yield_annotations($obj)[1]<>
+    self.ANN[2]<>
 }
 #=[ Completes the record template, allowing it to produce a true record type. ] 
 
 #|[ An ID given to anonymous record templates. ]
 method anonymous_id(::?ROLE:D: Mu $obj is raw --> uint) {
-    self.yield_annotations($obj)[0]<>
+    self.ANN[1]<>
 }
 
 #|[ Whether or not this is an anonymous record template. ]
@@ -85,7 +87,7 @@ method !do_parameterization(Mu $template is raw, @encoded) is raw {
     my $name := self.name($template) ~ '[' ~ @$args.map(*.raku).join(', ') ~ ']';
     my $obj  := P.new_type: self.body_block($template)(|$args), $template, :$name;
     my $how  := $obj.HOW;
-    $how.yield_annotations($obj) = self.yield_annotations($template).skip(self.*higher_annotations($template).sum);
+    $how.ANN = self.ANN.skip: self.*higher_annotations($template).sum;
     $how.compose: $obj
 }
 

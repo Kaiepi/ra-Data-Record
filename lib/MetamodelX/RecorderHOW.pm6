@@ -15,7 +15,7 @@ method new_type(::?ROLE:_: F(Mu) $fields is raw, D $template? is raw, :$name, *%
     my uint $id = !$name.DEFINITE && $ID⚛++;
     my $obj := callwith :name($id ?? "<anon record $id>" !! $name), |%rest;
     my $how := $obj.HOW;
-    $how.yield_annotations($obj) = $id, $template, $fields;
+    $how.ANN = $id, $template, $fields;
     $how.add_parent: $obj, $template;
     $obj
 }
@@ -39,17 +39,17 @@ method annotation_offset(::?ROLE:_: Mu $obj? is raw --> Int:D) {
 
 #|[ The fields defining this record type. ]
 method fields(::?ROLE:D: Mu $obj is raw) is raw {
-    self.yield_annotations($obj)[2]<>
+    self.ANN[2]<>
 }
 
 #|[ An origin for this record; should be the delegate by default. ]
 method template(::?ROLE:D: Mu $obj is raw) is raw {
-    self.yield_annotations($obj)[1]<>
+    self.ANN[1]<>
 }
 
 #|[ An ID given to anonymous records. ]
 method anonymous_id(::?ROLE:D: Mu $obj is raw --> uint) {
-    self.yield_annotations($obj)[0]<>
+    self.ANN[0]<>
 }
 
 #|[ Whether or not this is an anonymous record. ]
