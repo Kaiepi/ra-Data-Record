@@ -271,10 +271,13 @@ subtest 'nested', {
 };
 
 subtest 'lazy', {
-    plan 4;
+    plan 6;
 
     only term:<IntList> {
         once [@ Int:D @]:name<IntList>
+    }
+    only term:<WowItsList> {
+        once [@ * xx * @]:name<WowItsList>
     }
 
     my $reified := Promise.new;
@@ -292,6 +295,13 @@ subtest 'lazy', {
         @instance.push: 2
     }, X::Cannot::Lazy,
       'pushing to lazy arrays does not throw until Array decides it should';
+
+    lives-ok {
+        (1, <2>, 3e0, v4) ~~ WowItsList
+    }, 'can smartmatch a list against a record list with lazy fields';
+    lives-ok {
+        (1, <2>, 3e0, v4) (><) WowItsList
+    }, 'can typecheck a record list with lazy fields';
 };
 
 # vim: ft=perl6 sw=4 ts=4 sts=4 et

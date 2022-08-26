@@ -88,7 +88,7 @@ class Data::Record::List does Data::Record::Instance[List:D] does Iterable does 
         multi method ACCEPTS(::?CLASS:U: List:D \topic --> Bool:D) {
             my @fields  := self.^fields;
             my @matches := eager (|@fields xx *) Z[[&ACCEPTS]] topic;
-            ? [&&] |@matches, !topic.is-lazy, @matches %% @fields
+            ? [&&] |@matches, !topic.is-lazy, (@fields.elems andthen @matches %% * orelse True)
         }
     }
 
@@ -204,41 +204,42 @@ class Data::Record::List does Data::Record::Instance[List:D] does Iterable does 
 
     multi method antipairs(::?CLASS:D:) { @!record.antipairs }
 
-    method ^arity($type is raw --> Int:D) {
+    method ^arity($type is raw --> Int:_) {
         my @fields := self.fields: $type;
         @fields.elems
     }
 
     method ^get_field($type is raw, $key is raw) {
         my @fields := self.fields: $type;
-        @fields.AT-POS: $key % @fields.elems
+        @fields.AT-POS: (@fields.elems andthen $key % $_ orelse $key)
     }
 
     method ^declares_field($type is raw, $key is raw) {
         my @fields := self.fields: $type;
-        @fields.EXISTS-POS: $key % @fields.elems
+        @fields.EXISTS-POS: (@fields.elems andthen $key % $_ orelse $key)
     }
 
     method ^enforce_singleton($type is raw, Str:D $operation --> Nil) {
         my @fields := self.fields: $type;
         X::Data::Record::Missing.new(
             :$operation, :$type, :what<index>, :key(0), :field(@fields[0])
-        ).throw unless @fields.elems == 1;
+        ).throw unless (@fields.elems andthen $_ == 1);
     }
 
     method ^coerce_void($type is raw, $key is raw) {
         my @fields := self.fields: $type;
         my $field  := @fields.AT-POS: $key % @fields.elems;
         X::Data::Record::Definite.new(
-           :$type, :what<index>, :key($key % @fields.elems), :value($field)
+           :$type, :what<index>, :$key, :value($field)
         ).throw if $field.HOW.archetypes.definite && $field.^definite;
         $field
     }
 
-    method ^map_field($type is raw, $key is raw, Mu $value is raw, :$mode = WRAP) is raw {
+    method ^map_field($type is raw, $key is raw is copy, Mu $value is raw, :$mode = WRAP) is raw {
         my @fields := self.fields: $type;
-        @fields.EXISTS-POS($key % @fields.elems)
-          ?? ($value @~~ @fields.AT-POS($key % @fields.elems) :$mode)
+        @fields.elems andthen $key := $key % $_;
+        @fields.EXISTS-POS($key)
+          ?? ($value @~~ @fields.AT-POS($key) :$mode)
           !! $value
     }
 
@@ -251,7 +252,7 @@ class Data::Record::List does Data::Record::Instance[List:D] does Iterable does 
         my @fields := self.fields: $type;
         $value =:= IterationEnd
           ?? self."keep_it_$keep"($type, $key, $field)
-          !! @fields.EXISTS-POS($key % @fields.elems)
+          !! @fields.EXISTS-POS((@fields.elems andthen $key % $_ orelse $key))
             ?? ($value @~~ $field :$mode)
             !! self."drop_it_$drop"($type, $key, $field)
     }
@@ -259,22 +260,22 @@ class Data::Record::List does Data::Record::Instance[List:D] does Iterable does 
     method ^keep_it_missing($type is raw, $key is raw, Mu $field is raw --> IterationEnd) {
         my @fields := self.fields: $type;
         X::Data::Record::Missing.new(
-            :$*operation, :$type, :what<index>, :key($key % @fields.elems), :$field
-        ).throw unless $key %% @fields.elems;
+            :$*operation, :$type, :what<index>, :$key, :$field
+        ).throw if (@fields.elems andthen not $key %% $_);
     }
 
     method ^keep_it_coercing($type is raw, $key is raw, Mu $field is raw) {
         my @fields := self.fields: $type;
-        $key %% @fields.elems
+        (@fields.elems andthen $key %% $_)
           ?? IterationEnd
           !! self.coerce_void($type, $key)
     }
 
-    method ^drop_it_now($type is raw, $key is raw, Mu $value is raw --> IterationEnd) {
+    method ^drop_it_now($type is raw, $key is raw, Mu $field is raw --> IterationEnd) {
         # Follow through on a return.
     }
 
-    method ^drop_it_again($type is raw, $key is raw, Mu $value is raw --> IterationEnd) {
+    method ^drop_it_again($type is raw, $key is raw, Mu $field is raw --> IterationEnd) {
         next
     }
 }
