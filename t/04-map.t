@@ -13,7 +13,10 @@ subtest 'non-structural', {
         plan 47;
 
         my Str:D $name = 'NameMap';
-        sub term:<NameMap> { once ({@ name => Str:D @}:$name) }
+
+        only term:<NameMap> {
+            once ({@ name => Str:D @}:$name)
+        }
 
         lives-ok { NameMap }, 'can create record map types';
 
@@ -191,8 +194,12 @@ subtest 'non-structural', {
     subtest 'generic', {
         plan 4;
 
-        sub term:<PValueMap>    { once ({@{ value => $^a }@}:name<PValueMap>) }
-        sub term:<PStrValueMap> { once (PValueMap.^parameterize: Str:D) }
+        only term:<PValueMap> {
+            once ({@{ value => $^a }@}:name<PValueMap>)
+        }
+        only term:<PStrValueMap> {
+            once (PValueMap.^parameterize: Str:D)
+        }
 
         lives-ok { PValueMap }, 'can create a generic map';
         lives-ok { PStrValueMap }, 'can parameterize generic maps';
@@ -207,7 +214,9 @@ subtest 'non-structural', {
     subtest 'nested', {
         plan 8;
 
-        sub term:<NNameMap> { once ({@ name => {@ value => Str:D @} @}:name<NNameMap>) }
+        only term:<NNameMap> {
+            once ({@ name => {@ value => Str:D @} @}:name<NNameMap>)
+        }
 
         lives-ok { NNameMap }, 'can create nested maps';
         cmp-ok {name => {value => 'ok'}}, &[~~], NNameMap,
@@ -243,7 +252,10 @@ subtest 'structural', {
         plan 48;
 
         my Str:D $name = 'NameMap';
-        sub term:<NameMap> { once ({@ name => Str:D @}:structural:$name) }
+
+        only term:<NameMap> {
+            once ({@ name => Str:D @}:structural:$name)
+        }
 
         lives-ok { NameMap }, 'can create structural record map types';
 
@@ -418,8 +430,12 @@ subtest 'structural', {
     subtest 'generic', {
         plan 4;
 
-        sub term:<PValueMap>    { once ({@{ value => $^a }@}:structural:name<PValueMap>) }
-        sub term:<PStrValueMap> { once (PValueMap.^parameterize: Str:D) }
+        only term:<PValueMap> {
+            once ({@{ value => $^a }@}:structural:name<PValueMap>)
+        }
+        only term:<PStrValueMap> {
+            once (PValueMap.^parameterize: Str:D)
+        }
 
         lives-ok { PValueMap }, 'can create a generic structural map';
         lives-ok { PStrValueMap }, 'can parameterize generic maps';
@@ -434,7 +450,9 @@ subtest 'structural', {
     subtest 'nested', {
         plan 8;
 
-        sub term:<NNameMap> { once ({@ name => {@ value => Str:D @}:structural @}:structural:name<NNameMap>) }
+        only term:<NNameMap> {
+            once ({@ name => {@ value => Str:D @}:structural @}:structural:name<NNameMap>)
+        }
 
         lives-ok { NNameMap }, 'can create nested structural maps';
         cmp-ok {name => {value => 'ok'}}, &[~~], NNameMap,

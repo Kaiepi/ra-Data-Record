@@ -10,7 +10,10 @@ subtest 'basic', {
     plan 45;
 
     my Str:D $name = 'IntTuple';
-    sub term:<IntTuple> { once <@ Int:D @>:$name }
+
+    only term:<IntTuple> {
+        once <@ Int:D @>:$name
+    }
 
     lives-ok { IntTuple }, 'can create tuple record types';
     is IntTuple.^name, $name,
@@ -169,8 +172,12 @@ subtest 'basic', {
 subtest 'generic', {
     plan 4;
 
-    sub term:<PTuple>    { once <@{ $^a }@>:name<PTuple> }
-    sub term:<PIntTuple> { once PTuple.^parameterize: Int:D }
+    only term:<PTuple> {
+        once <@{ $^a }@>:name<PTuple>
+    }
+    only term:<PIntTuple> {
+        once PTuple.^parameterize: Int:D
+    }
 
     lives-ok { PTuple }, 'can create a generic tuple';
     lives-ok { PIntTuple }, 'can parameterize generic tuples';
@@ -185,7 +192,9 @@ subtest 'generic', {
 subtest 'nested', {
     plan 8;
 
-    sub term:<NIntTuple> { once <@ <@ Int:D @> @>:name<NIntTuple> }
+    only term:<NIntTuple> {
+        once <@ <@ Int:D @> @>:name<NIntTuple>
+    }
 
     lives-ok { NIntTuple }, 'can create nested tuples';
     cmp-ok ((1,),), &[~~], NIntTuple,
@@ -216,10 +225,12 @@ subtest 'nested', {
 subtest 'lazy', {
     plan 3;
 
-    sub term:<IntTuple> { once <@ Int:D @>:name<IntTuple> }
+    only term:<IntTuple> {
+        once <@ Int:D @>:name<IntTuple>
+    }
 
-    my Promise:D $reified  .= new;
-    my           @instance;
+    my $reified := Promise.new;
+    my @instance;
     lives-ok {
         @instance := (lazy gather {
             $reified.keep;
