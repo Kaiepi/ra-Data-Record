@@ -271,11 +271,11 @@ class Data::Record::List does Data::Record::Instance[List:D] does Iterable does 
           !! self.coerce_void($type, $key)
     }
 
-    method ^drop_it_now($type is raw, $key is raw, Mu $field is raw --> IterationEnd) {
-        # Follow through on a return.
+    method ^drop_it_never($type is raw, $key is raw, Mu $value is raw) {
+        $value
     }
 
-    method ^drop_it_again($type is raw, $key is raw, Mu $field is raw --> IterationEnd) {
+    method ^drop_it_again($type is raw, $key is raw, Mu $value is raw --> IterationEnd) {
         next
     }
 }
@@ -318,7 +318,7 @@ my class ListIterator does Iterator {
     method wrap(::?CLASS:D:) is raw {
         $!type.^map_it_field:
             $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
-            :$!mode, :drop<now>, :keep<missing>
+            :$!mode, :drop<never>, :keep<missing>
     }
 
     #|[ Any fields that do not typecheck will be stripped from the list, but if
@@ -337,7 +337,7 @@ my class ListIterator does Iterator {
     method subsume(::?CLASS:D:) is raw {
         $!type.^map_it_field:
             $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
-            :$!mode, :drop<now>, :keep<coercing>
+            :$!mode, :drop<never>, :keep<coercing>
     }
 
     #|[ If any values in the given list cannot typecheck, they will be stripped
@@ -347,7 +347,7 @@ my class ListIterator does Iterator {
     method coerce(::?CLASS:D:) is raw {
         loop { return-rw $!type.^map_it_field:
             $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
-            :$!mode, :drop<now>, :keep<coercing> }
+            :$!mode, :drop<again>, :keep<coercing> }
     }
 
 }
