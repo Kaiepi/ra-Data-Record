@@ -38,7 +38,7 @@ method annotation_offset(::?ROLE:_: Mu $obj? is raw --> Int:D) {
 #=[ Depending on this in a subtype requires an annotations offset to skip. ]
 
 #|[ The fields defining this record type. ]
-method fields(::?ROLE:D: Mu $obj is raw) is raw {
+method fields(::?ROLE:D: Mu $obj is raw) {
     self.ANN[2]<>
 }
 
