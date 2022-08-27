@@ -9,7 +9,7 @@ class Data::Record::Lifter does Callable is repr<Uninstantiable> {
     #|[ Lifts the type of a value to that of an arbitrary record field. In other
         rwords, typecheck; if the field is a record as well, wrap the value we toss
         at it so we can predict its future typechecks. ]
-    proto method CALL-ME(Mu, Mu, *%) is raw is hidden-from-backtrace {*}
+    proto method CALL-ME(Mu, Mu) is raw is hidden-from-backtrace {*}
     #=[ For nicer errors, set a Str:D $*operation. ]
     multi method CALL-ME(I \a, I \b;; :$mode!) {
         X::Data::Record::TypeCheck.new(
