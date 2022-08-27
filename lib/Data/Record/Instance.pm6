@@ -1,5 +1,4 @@
 use v6.d;
-use MetamodelX::RecordLifter;
 use Data::Record::Exceptions;
 unit role Data::Record::Instance[::T];
 

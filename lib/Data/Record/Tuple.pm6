@@ -1,12 +1,10 @@
 use v6.d;
 use MetamodelX::RecorderHOW;
 use MetamodelX::RecordTemplateHOW;
-use MetamodelX::RecordLifter;
 use Data::Record::Mode;
-use Data::Record::Instance;
 use Data::Record::Exceptions;
-
-my constant &infix:<@~~> = MetamodelX::RecordLifter[Data::Record::Instance].^pun;
+use Data::Record::Instance;
+use Data::Record::Lifter;
 
 my class TupleIterator { ... }
 
