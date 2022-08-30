@@ -99,12 +99,12 @@ class Data::Record::List does Data::Record::Instance[List:D] does Iterable does 
     }
 
     method BIND-POS(::?CLASS:D: Mu $pos is raw, Mu $value is raw --> Mu) is raw {
-        state $*operation = 'binding';
+        CONTROL { .flunk: 'binding' when CX::Rest }
         @!record.BIND-POS: $pos, self.^map_field: $pos, $value
     }
 
     method ASSIGN-POS(::?CLASS:D: Mu $pos is raw, Mu $value is raw --> Mu) is raw {
-        state $*operation = 'assignment';
+        CONTROL { .flunk: 'assignment' when CX::Rest }
         @!record.ASSIGN-POS: $pos, self.^map_field: $pos, $value
     }
 
@@ -314,6 +314,7 @@ my class ListIterator does Iterator {
         will be considered to have missing fields and thus an exception will be
         thrown. ]
     method wrap(::?CLASS:D:) is raw {
+        CONTROL { .flunk: $!operation when CX::Rest }
         $!type.^map_it_field:
             $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
             :$!mode, :drop<never>, :keep<missing>
@@ -323,9 +324,22 @@ my class ListIterator does Iterator {
         the arity of the list does not match that of the record, it will be
         considered to have missing fields and thus an exception will be thrown. ]
     method consume(::?CLASS:D:) is raw {
-        loop { return-rw $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
-            :$!mode, :drop<again>, :keep<missing> }
+        my $key;
+        my $field;
+        loop {
+            # 1st pass - scan for an existent field.
+            CONTROL { last when CX::Rest }
+            return-rw $!type.^map_it_field:
+                ($key := $!keys.pull-one), ($field := $!fields.pull-one), $!values.pull-one,
+                :$!mode, :drop<again>, :keep<missing>;
+        }
+        loop {
+            # 2nd pass - scan for an existent value.
+            CONTROL { next when CX::Rest }
+            return-rw $!type.^map_it_field:
+                $key, $field, $!values.pull-one,
+                :$!mode, :drop<again>, :keep<missing>;
+        }
     }
 
     #|[ If any fields are missing from the list, they will be stubbed (if
@@ -333,6 +347,7 @@ my class ListIterator does Iterator {
         be thrown. Note that it's impossible for extraneous fields to exist in
         a list. ]
     method subsume(::?CLASS:D:) is raw {
+        CONTROL { .flunk: $!operation when CX::Rest }
         $!type.^map_it_field:
             $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
             :$!mode, :drop<never>, :keep<coercing>
@@ -343,11 +358,23 @@ my class ListIterator does Iterator {
         be stubbed (if possible).  This should only throw if a definite field
         is missing. ]
     method coerce(::?CLASS:D:) is raw {
-        loop { return-rw $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
-            :$!mode, :drop<again>, :keep<coercing> }
+        my $key;
+        my $field;
+        loop {
+            # 1st pass - scan for an existent field.
+            CONTROL { last when CX::Rest }
+            return-rw $!type.^map_it_field:
+                ($key := $!keys.pull-one), ($field := $!fields.pull-one), $!values.pull-one,
+                :$!mode, :drop<again>, :keep<coercing>;
+        }
+        loop {
+            # 2nd pass - scan for an existent value.
+            CONTROL { next when CX::Rest }
+            return-rw $!type.^map_it_field:
+                $key, $field, $!values.pull-one,
+                :$!mode, :drop<again>, :keep<coercing>;
+        }
     }
-
 }
 
 #|[ Iterator for array ops taking lists of values (push/unshift/append/prepend).

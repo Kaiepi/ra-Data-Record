@@ -38,10 +38,9 @@ subtest 'basic', {
     lives-ok {
         (1,) (<<) IntList
     }, '(<<) lives for acceptable lists';
-    throws-like {
+    lives-ok {
         (1,'2',) (<<) IntList
-    }, X::Data::Record::TypeCheck,
-        '(<<) throws for unacceptable lists';
+    }, '(<<) consumes unacceptable values in lists';
 
     lives-ok {
         (1,) (>>) IntList
@@ -54,10 +53,9 @@ subtest 'basic', {
     lives-ok {
         (1,) (<>) IntList
     }, '(<>) lives for acceptable lists';
-    throws-like {
+    lives-ok {
         (1,'2',) (<>) IntList
-    }, X::Data::Record::TypeCheck,
-        '(<>) throws for unacceptable lists';
+    }, '(<>) coerces lists';
 
     lives-ok {
         (1,) (><) IntList

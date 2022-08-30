@@ -92,17 +92,17 @@ class Data::Record::Map does Data::Record::Instance[Map:D] does Iterable does As
     }
 
     method AT-KEY(::THIS ::?CLASS:D: $key is raw) is raw {
-        state $*operation = 'lookup';
+        CONTROL { .flunk: 'lookup' when CX::Rest }
         self.^map_field: $key, %!record.AT-KEY: $key
     }
 
     method BIND-KEY(::THIS ::?CLASS:D: $key is raw, Mu $value is raw) is raw {
-        state $*operation = 'binding';
+        CONTROL { .flunk: 'binding' when CX::Rest }
         %!record.BIND-KEY: $key, self.^map_field: $key, $value
     }
 
     method ASSIGN-KEY(::THIS ::?CLASS:D: $key is raw, Mu $value is raw) is raw {
-        state $*operation = 'assignment';
+        CONTROL { .flunk: 'assignment' when CX::Rest }
         %!record.ASSIGN-KEY: $key, self.^map_field: $key, $value
     }
 
@@ -112,9 +112,8 @@ class Data::Record::Map does Data::Record::Instance[Map:D] does Iterable does As
             operation => 'deletion',
             type      => THIS,
         ).throw if self.^fields.EXISTS-KEY: $key;
-        let %!record;
-        state $*operation = 'deletion';
-        self.^map_field: $key, %!record.DELETE-KEY: $key
+        CONTROL { .flunk: 'deletion' when CX::Rest }
+        self.^map_field: $key, (let %!record).DELETE-KEY: $key
     }
 
     method push(::THIS ::?CLASS:D: +@values is raw --> ::?CLASS:D) {
@@ -283,9 +282,9 @@ my class MapIterator does PredictiveIterator {
     method count-only(::?CLASS:D: --> Int:D) { $!arity }
 
     method map-one-pair(::?CLASS:D: *%named) is raw {
-        my $key := $!keys.pull-one;
-        $key =:= IterationEnd
-          ?? $key
+        CONTROL { .flunk: $!operation when CX::Rest }
+        (my $key := $!keys.pull-one) =:= IterationEnd
+          ?? IterationEnd
           !! ($key => $!type.^map_to_field: $key, $!values, |%named)
     }
 

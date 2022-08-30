@@ -98,12 +98,12 @@ class Data::Record::Tuple does Data::Record::Instance[List:D] does Iterable does
     }
 
     method BIND-POS(::?CLASS:D: Mu $pos is raw, Mu $value is raw) is raw {
-        state $*operation = 'binding';
+        CONTROL { .flunk: 'binding' when CX::Rest }
         @!record.BIND-POS: $pos, self.^map_field: $pos, $value
     }
 
     method ASSIGN-POS(::?CLASS:D: Mu $pos is raw, Mu $value is raw) is raw {
-        state $*operation = 'assignment';
+        CONTROL { .flunk: 'assignment' when CX::Rest }
         @!record.ASSIGN-POS: $pos, self.^map_field: $pos, $value
     }
 
@@ -263,6 +263,7 @@ my class TupleIterator does Iterator {
         must typecheck as their corresponding fields, otherwise an exception
         will be thrown. ]
     method wrap(::?CLASS:D:) is raw {
+        CONTROL { .flunk: $!operation when CX::Rest }
         $!type.^map_it_field:
             $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
             :$!mode, :drop<more>, :keep<missing>
@@ -273,6 +274,7 @@ my class TupleIterator does Iterator {
         missing or values corresponding to fields don't typecheck, an exception
         will be thrown. ]
     method consume(::?CLASS:D:) is raw {
+        CONTROL { .flunk: $!operation when CX::Rest }
         $!type.^map_it_field:
             $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
             :$!mode, :drop<less>, :keep<missing>
@@ -283,6 +285,7 @@ my class TupleIterator does Iterator {
         values don't typecheck as their corresponding fields, an exception will
         be thrown. ]
     method subsume(::?CLASS:D:) is raw {
+        CONTROL { .flunk: $!operation when CX::Rest }
         $!type.^map_it_field:
             $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
             :$!mode, :drop<more>, :keep<coercing>
@@ -292,6 +295,7 @@ my class TupleIterator does Iterator {
         possible) and extraneous values are stripped. If any values don't
         typecheck as their corresponding fields, an exception will be thrown. ]
     method coerce(::?CLASS:D:) is raw {
+        CONTROL { .flunk: $!operation when CX::Rest }
         $!type.^map_it_field:
             $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
             :$!mode, :drop<less>, :keep<coercing>
