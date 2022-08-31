@@ -33,7 +33,7 @@ class Data::Record::Map does Data::Record::Instance[Map:D] does Iterable does As
     }
     multi method new(::?CLASS:_ ::THIS: Map:D $original is raw, Data::Record::Mode:D :$mode = WRAP --> ::?CLASS:D) {
         my %record := $original.new: List.from-iterator:
-            MapIterator.new: THIS, THIS.^metamode, WRAP, 'map reification', $original;
+            MapIterator.new: THIS, THIS.^metamode, $mode, 'map reification', $original;
         self.bless: :%record
     }
 
@@ -206,7 +206,7 @@ class Data::Record::Map does Data::Record::Instance[Map:D] does Iterable does As
 
     method ^map_to_field(
         $type is raw, $key is raw, Map:D $values is raw,
-        Data::Record::Mode:D :$mode = WRAP,
+        :$mode = WRAP,
         :$drop = self.structural($type) ?? 'none' !! 'unbounded',
         :$keep!,
     ) is raw {
@@ -285,7 +285,7 @@ my class MapIterator does PredictiveIterator {
         CONTROL { .flunk: $!operation when CX::Rest }
         (my $key := $!keys.pull-one) =:= IterationEnd
           ?? IterationEnd
-          !! ($key => $!type.^map_to_field: $key, $!values, |%named)
+          !! ($key => $!type.^map_to_field: $key, $!values, |%named, :$!mode)
     }
 
     method wrap-structured(::?CLASS:D:) is raw {
