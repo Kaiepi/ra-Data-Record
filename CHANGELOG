@@ -66,3 +66,6 @@ v0.2.4:
 
 v0.2.5:
     - Allow tests to pass with Rakudo v2020.12 and later.
+
+v0.2.6:
+    - Point the module auth field to zef:Kaiepi.

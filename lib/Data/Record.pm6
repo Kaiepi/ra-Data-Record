@@ -10,4 +10,4 @@ sub EXPORT(--> Map:D) {
         '&infix:<eqv>' => &infix:<eqv>,
         |Data::Record::Operators::EXPORT::DEFAULT.WHO.keys.map({ $_ => ::($_) })
 }
-unit module Data::Record:auth<github:Kaiepi>:ver<0.2.5>:api<1>;
+unit module Data::Record:auth<zef:Kaiepi>:ver<0.2.6>:api<1>;
