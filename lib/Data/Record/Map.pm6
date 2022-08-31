@@ -79,9 +79,9 @@ class Data::Record::Map does Data::Record::Instance[Map:D] does Iterable does As
         $raku
     }
 
-    multi method ACCEPTS(::?CLASS:U: Map:D \topic --> Bool:D) {
+    multi method ACCEPTS(::?CLASS:U: Map:D \topic) {
         my $fields := self.^fields;
-        ? [&&] lazy for keys $fields.keys ∪ topic.keys -> $key is raw {
+        [&&] lazy for keys $fields.keys ∪ topic.keys -> $key is raw {
             $fields.EXISTS-KEY($key) && topic.EXISTS-KEY($key) &&
                 $fields.AT-KEY($key).ACCEPTS(topic.AT-KEY: $key)
         }

@@ -81,12 +81,13 @@ class Data::Record::List does Data::Record::Instance[List:D] does Iterable does 
     }
 
     do {
-        sub ACCEPTS(Mu \a, Mu \b --> Bool:D) is hidden-from-backtrace { a.ACCEPTS: b }
+        sub ACCEPTS(Mu \a, Mu \b) is hidden-from-backtrace { a.ACCEPTS: b }
 
-        multi method ACCEPTS(::?CLASS:U: List:D \topic --> Bool:D) {
+        multi method ACCEPTS(::?CLASS:U: List:D \topic) {
             my @fields  := self.^fields;
-            my @matches := eager (|@fields xx *) Z[[&ACCEPTS]] topic;
-            ? [&&] |@matches, !topic.is-lazy, (@fields.elems andthen @matches %% * orelse True)
+            (my $matches := [&&] (|@fields xx *) Z[[&ACCEPTS]] topic)
+              & !topic.is-lazy
+              & (@fields.elems andthen $matches.elems %% * orelse True)
         }
     }
 

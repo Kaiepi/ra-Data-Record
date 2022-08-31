@@ -51,9 +51,7 @@ multi method raku(::?CLASS:D: --> Str:D) { self.^name ~ '.new(' ~ self.record.ra
 proto method ACCEPTS(Mu: Mu) {*}
 multi method ACCEPTS(::?ROLE:U: T --> True) { }
 multi method ACCEPTS(::?ROLE:_: Mu --> False) { }
-multi method ACCEPTS(::?CLASS:_: ::?CLASS \topic) is raw {
-    self.HOW =:= topic.HOW || self.fields.ACCEPTS(topic.fields)
-}
+multi method ACCEPTS(::?CLASS:_: ::?CLASS:_ \topic) { self.WHAT =:= topic.WHAT }
 
 #|[ Handles an operation on a field of the record given a callback accepting a
     value to perform the operation with. Typechecking and coercion of data

@@ -79,12 +79,13 @@ class Data::Record::Tuple does Data::Record::Instance[List:D] does Iterable does
     }
 
     do {
-        sub ACCEPTS(Mu \a, Mu \b --> Bool:D) is raw is hidden-from-backtrace { a.ACCEPTS: b }
+        sub ACCEPTS(Mu \a, Mu \b) is raw is hidden-from-backtrace { a.ACCEPTS: b }
 
-        multi method ACCEPTS(::?CLASS:U: List:D \topic --> Bool:D) {
-            my @fields  := self.^fields;
-            my @matches := eager @fields Z[[&ACCEPTS]] topic;
-            ? [&&] |@matches, !topic.is-lazy, topic == @matches
+        multi method ACCEPTS(::?CLASS:U: List:D \topic) {
+            my @fields := self.^fields;
+            (my $matches := [&&] @fields Z[[&ACCEPTS]] topic)
+                & !topic.is-lazy
+                & topic.elems == $matches.elems
         }
     }
 
