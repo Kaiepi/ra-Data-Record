@@ -63,3 +63,6 @@ v0.2.3:
 v0.2.4:
     - Compatibility updates for upcoming dispatch changes to Rakudo.
     - Make the module's packaging a little easier to read.
+
+v0.2.5:
+    - Allow tests to pass with Rakudo v2020.12 and later.
