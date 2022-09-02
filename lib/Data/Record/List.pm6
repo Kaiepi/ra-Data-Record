@@ -5,278 +5,277 @@ use Data::Record::Mode;
 use Data::Record::Exceptions;
 use Data::Record::Instance;
 use Data::Record::Lifter;
+unit class Data::Record::List does Data::Record::Instance[List:D] does Iterable does Positional;
 
 my class ListIterator { ... }
 
 my class ArrayIterator { ... }
 
-class Data::Record::List does Data::Record::Instance[List:D] does Iterable does Positional {
-    has @!record is required;
+has @!record is required;
 
-    submethod BUILD(::?CLASS:D: :@record is raw --> Nil) {
-        @!record := @record;
+submethod BUILD(::?CLASS:D: :@record is raw --> Nil) {
+    @!record := @record;
+}
+
+multi method new(::?CLASS:_: List:D $original is raw, Bool:D :wrap($)! where ?* --> ::?CLASS:D) {
+    my @record := self.wrap: $original;
+    sink @record unless @record.is-lazy;
+    self.bless: :@record
+}
+multi method new(::?CLASS:_: List:D $original is raw, Bool:D :consume($)! where ?* --> ::?CLASS:D) {
+    my @record := self.consume: $original;
+    sink @record unless @record.is-lazy;
+    self.bless: :@record
+}
+multi method new(::?CLASS:_: List:D $original is raw, Bool:D :subsume($)! where ?* --> ::?CLASS:D) {
+    my @record := self.subsume: $original;
+    sink @record unless @record.is-lazy;
+    self.bless: :@record
+}
+multi method new(::?CLASS:_: List:D $original is raw, Bool:D :coerce($)! where ?* --> ::?CLASS:D) {
+    my @record := self.coerce: $original;
+    sink @record unless @record.is-lazy;
+    self.bless: :@record
+}
+multi method new(::?CLASS:_ ::THIS: List:D ::T $original is raw, Data::Record::Mode:D :$mode = WRAP --> ::?CLASS:D) {
+    my @record := T.from-iterator: ListIterator.new: THIS, $mode, 'list reification', $original;
+    sink @record unless @record.is-lazy;
+    self.bless: :@record
+}
+
+method wrap(::?CLASS:_ ::THIS: ::T List:D $original is raw --> List:D) {
+    T.from-iterator: ListIterator.new: THIS, WRAP, 'list reification', $original
+}
+
+method consume(::?CLASS:_ ::THIS: ::T List:D $original is raw --> List:D) {
+    T.from-iterator: ListIterator.new: THIS, CONSUME, 'list reification', $original
+}
+
+method subsume(::?CLASS:_ ::THIS: ::T List:D $original is raw --> List:D) {
+    T.from-iterator: ListIterator.new: THIS, SUBSUME, 'list reification', $original
+}
+
+method coerce(::?CLASS:_ ::THIS: ::T List:D $original is raw --> List:D) {
+    T.from-iterator: ListIterator.new: THIS, COERCE, 'list reification', $original
+}
+
+method fields(::?CLASS:_: --> List:D) { self.^fields }
+
+method record(::?CLASS:D: --> List:D) { @!record }
+
+do { # hide this sub
+    proto sub unrecord(Mu) is raw                          {*}
+    multi sub unrecord(Data::Record::Instance:D \recorded) { recorded.unrecord }
+    multi sub unrecord(Mu \value)                          { value }
+
+    method unrecord(::?CLASS:D: --> List:D) {
+        @!record.WHAT.from-iterator: @!record.map(&unrecord).iterator
     }
+}
 
-    multi method new(::?CLASS:_: List:D $original is raw, Bool:D :wrap($)! where ?* --> ::?CLASS:D) {
-        my @record := self.wrap: $original;
-        sink @record unless @record.is-lazy;
-        self.bless: :@record
+multi method raku(::?CLASS:U: --> Str:D) {
+    my Str:D $raku = '[@ ' ~ self.^fields.map(*.raku).join(', ') ~ ' @]';
+    my Str:D $name = self.^name;
+    $raku ~= ":name('$name')" unless self.^is_anonymous;
+    $raku
+}
+
+do {
+    sub ACCEPTS(Mu \a, Mu \b) is hidden-from-backtrace { a.ACCEPTS: b }
+
+    multi method ACCEPTS(::?CLASS:U: List:D \topic) {
+        my @fields  := self.^fields;
+        (my $matches := [&&] (|@fields xx *) Z[[&ACCEPTS]] topic)
+          & !topic.is-lazy
+          & (@fields.elems andthen $matches.elems %% * orelse True)
     }
-    multi method new(::?CLASS:_: List:D $original is raw, Bool:D :consume($)! where ?* --> ::?CLASS:D) {
-        my @record := self.consume: $original;
-        sink @record unless @record.is-lazy;
-        self.bless: :@record
-    }
-    multi method new(::?CLASS:_: List:D $original is raw, Bool:D :subsume($)! where ?* --> ::?CLASS:D) {
-        my @record := self.subsume: $original;
-        sink @record unless @record.is-lazy;
-        self.bless: :@record
-    }
-    multi method new(::?CLASS:_: List:D $original is raw, Bool:D :coerce($)! where ?* --> ::?CLASS:D) {
-        my @record := self.coerce: $original;
-        sink @record unless @record.is-lazy;
-        self.bless: :@record
-    }
-    multi method new(::?CLASS:_ ::THIS: List:D ::T $original is raw, Data::Record::Mode:D :$mode = WRAP --> ::?CLASS:D) {
-        my @record := T.from-iterator: ListIterator.new: THIS, $mode, 'list reification', $original;
-        sink @record unless @record.is-lazy;
-        self.bless: :@record
-    }
+}
 
-    method wrap(::?CLASS:_ ::THIS: ::T List:D $original is raw --> List:D) {
-        T.from-iterator: ListIterator.new: THIS, WRAP, 'list reification', $original
-    }
+method EXISTS-POS(::?CLASS:D: Mu $pos is raw --> Bool:D) {
+    @!record.EXISTS-POS: $pos
+}
 
-    method consume(::?CLASS:_ ::THIS: ::T List:D $original is raw --> List:D) {
-        T.from-iterator: ListIterator.new: THIS, CONSUME, 'list reification', $original
-    }
+method AT-POS(::?CLASS:D: Mu $pos is raw --> Mu) is raw {
+    @!record.AT-POS: $pos
+}
 
-    method subsume(::?CLASS:_ ::THIS: ::T List:D $original is raw --> List:D) {
-        T.from-iterator: ListIterator.new: THIS, SUBSUME, 'list reification', $original
-    }
+method BIND-POS(::?CLASS:D: Mu $pos is raw, Mu $value is raw --> Mu) is raw {
+    CONTROL { .flunk: 'binding' when CX::Rest }
+    @!record.BIND-POS: $pos, self.^map_field: $pos, $value
+}
 
-    method coerce(::?CLASS:_ ::THIS: ::T List:D $original is raw --> List:D) {
-        T.from-iterator: ListIterator.new: THIS, COERCE, 'list reification', $original
-    }
+method ASSIGN-POS(::?CLASS:D: Mu $pos is raw, Mu $value is raw --> Mu) is raw {
+    CONTROL { .flunk: 'assignment' when CX::Rest }
+    @!record.ASSIGN-POS: $pos, self.^map_field: $pos, $value
+}
 
-    method fields(::?CLASS:_: --> List:D) { self.^fields }
+method DELETE-POS(::?CLASS:D: Mu $pos is raw --> Mu) is raw {
+    # XXX: This should be typechecking for the definiteness of the field
+    # this position corresponds to and ensuring that, if this will leave
+    # an empty space in the record, the field is not definite; however,
+    # array slices complicate things.
+    @!record.DELETE-POS: $pos
+}
 
-    method record(::?CLASS:D: --> List:D) { @!record }
+method push(::THIS ::?CLASS:D: **@values is raw --> ::?CLASS:D) {
+    @!record.push: Slip.from-iterator: ArrayIterator.new: THIS, WRAP, 'push', @values;
+    self
+}
 
-    do { # hide this sub
-        proto sub unrecord(Mu) is raw                          {*}
-        multi sub unrecord(Data::Record::Instance:D \recorded) { recorded.unrecord }
-        multi sub unrecord(Mu \value)                          { value }
+method pop(::?CLASS:D ::THIS:) is raw {
+    self.^enforce_singleton: 'pop'; # XXX: "enforce"
+    @!record.pop
+}
 
-        method unrecord(::?CLASS:D: --> List:D) {
-            @!record.WHAT.from-iterator: @!record.map(&unrecord).iterator
-        }
-    }
+method shift(::?CLASS:D ::THIS: --> Mu) is raw {
+    self.^enforce_singleton: 'pop'; # XXX: "enforce"
+    @!record.shift
+}
 
-    multi method raku(::?CLASS:U: --> Str:D) {
-        my Str:D $raku = '[@ ' ~ self.^fields.map(*.raku).join(', ') ~ ' @]';
-        my Str:D $name = self.^name;
-        $raku ~= ":name('$name')" unless $name eq MetamodelX::RecordHOW::ANON_NAME;
-        $raku
-    }
+method unshift(::THIS ::?CLASS:D: **@values is raw --> ::?CLASS:D) {
+    @!record.unshift: Slip.from-iterator: ArrayIterator.new: THIS, WRAP, 'unshift', @values;
+    self
+}
 
-    do {
-        sub ACCEPTS(Mu \a, Mu \b) is hidden-from-backtrace { a.ACCEPTS: b }
+proto method prepend(|) {*}
+multi method prepend(::THIS ::?CLASS:D: Iterable:D $values is raw --> ::?CLASS:D) {
+    @!record.prepend: Seq.new: ArrayIterator.new: THIS, WRAP, 'prepend', $values;
+    self
+}
+multi method prepend(::THIS ::?CLASS:D: **@values is raw --> ::?CLASS:D) {
+    @!record.prepend: Slip.from-iterator: ArrayIterator.new: THIS, WRAP, 'prepend', @values;
+    self
+}
 
-        multi method ACCEPTS(::?CLASS:U: List:D \topic) {
-            my @fields  := self.^fields;
-            (my $matches := [&&] (|@fields xx *) Z[[&ACCEPTS]] topic)
-              & !topic.is-lazy
-              & (@fields.elems andthen $matches.elems %% * orelse True)
-        }
-    }
+proto method append(|) {*}
+multi method append(::THIS ::?CLASS:D: Iterable:D $values is raw --> ::?CLASS:D) {
+    @!record.append: Seq.new: ArrayIterator.new: THIS, WRAP, 'append', $values;
+    self
+}
+multi method append(::THIS ::?CLASS:D: **@values is raw --> ::?CLASS:D) {
+    @!record.append: Slip.from-iterator: ArrayIterator.new:  THIS, WRAP, 'append', @values;
+    self
+}
 
-    method EXISTS-POS(::?CLASS:D: Mu $pos is raw --> Bool:D) {
-        @!record.EXISTS-POS: $pos
-    }
+multi method iterator(::?CLASS:D:) { @!record.iterator }
 
-    method AT-POS(::?CLASS:D: Mu $pos is raw --> Mu) is raw {
-        @!record.AT-POS: $pos
-    }
+multi method list(::?CLASS:D:) is raw { self }
 
-    method BIND-POS(::?CLASS:D: Mu $pos is raw, Mu $value is raw --> Mu) is raw {
-        CONTROL { .flunk: 'binding' when CX::Rest }
-        @!record.BIND-POS: $pos, self.^map_field: $pos, $value
-    }
+multi method hash(::?CLASS:D:) is raw { @!record.hash }
 
-    method ASSIGN-POS(::?CLASS:D: Mu $pos is raw, Mu $value is raw --> Mu) is raw {
-        CONTROL { .flunk: 'assignment' when CX::Rest }
-        @!record.ASSIGN-POS: $pos, self.^map_field: $pos, $value
-    }
+method is-lazy(::?CLASS:_:) {
+    self.DEFINITE && @!record.is-lazy
+}
 
-    method DELETE-POS(::?CLASS:D: Mu $pos is raw --> Mu) is raw {
-        # XXX: This should be typechecking for the definiteness of the field
-        # this position corresponds to and ensuring that, if this will leave
-        # an empty space in the record, the field is not definite; however,
-        # array slices complicate things.
-        @!record.DELETE-POS: $pos
-    }
+method cache(::?CLASS:_: --> ::?CLASS:D) {
+    self.DEFINITE
+      ?? @!record.is-lazy
+        ?? self.new(@!record.cache)
+        !! self
+      !! @(self).cache
+}
 
-    method push(::THIS ::?CLASS:D: **@values is raw --> ::?CLASS:D) {
-        @!record.push: Slip.from-iterator: ArrayIterator.new: THIS, WRAP, 'push', @values;
-        self
-    }
+method eager(::?CLASS:_: --> ::?CLASS:D) {
+    self.DEFINITE
+      ?? @!record.is-lazy
+        ?? self.new(@!record.eager)
+        !! self
+      !! @(self).eager
+}
 
-    method pop(::?CLASS:D ::THIS:) is raw {
-        self.^enforce_singleton: 'pop'; # XXX: "enforce"
-        @!record.pop
-    }
+method lazy(::?CLASS:_: --> ::?CLASS:D) {
+    self.DEFINITE
+      ?? @!record.is-lazy
+        ?? self
+        !! self.new(@!record.lazy)
+      !! @(self).lazy
+}
 
-    method shift(::?CLASS:D ::THIS: --> Mu) is raw {
-        self.^enforce_singleton: 'pop'; # XXX: "enforce"
-        @!record.shift
-    }
+multi method elems(::?CLASS:D:) { @!record.elems }
 
-    method unshift(::THIS ::?CLASS:D: **@values is raw --> ::?CLASS:D) {
-        @!record.unshift: Slip.from-iterator: ArrayIterator.new: THIS, WRAP, 'unshift', @values;
-        self
-    }
+multi method keys(::?CLASS:D:) { @!record.keys }
 
-    proto method prepend(|) {*}
-    multi method prepend(::THIS ::?CLASS:D: Iterable:D $values is raw --> ::?CLASS:D) {
-        @!record.prepend: Seq.new: ArrayIterator.new: THIS, WRAP, 'prepend', $values;
-        self
-    }
-    multi method prepend(::THIS ::?CLASS:D: **@values is raw --> ::?CLASS:D) {
-        @!record.prepend: Slip.from-iterator: ArrayIterator.new: THIS, WRAP, 'prepend', @values;
-        self
-    }
+multi method values(::?CLASS:D:) { @!record.values }
 
-    proto method append(|) {*}
-    multi method append(::THIS ::?CLASS:D: Iterable:D $values is raw --> ::?CLASS:D) {
-        @!record.append: Seq.new: ArrayIterator.new: THIS, WRAP, 'append', $values;
-        self
-    }
-    multi method append(::THIS ::?CLASS:D: **@values is raw --> ::?CLASS:D) {
-        @!record.append: Slip.from-iterator: ArrayIterator.new:  THIS, WRAP, 'append', @values;
-        self
-    }
+multi method kv(::?CLASS:D:) { @!record.kv }
 
-    multi method iterator(::?CLASS:D:) { @!record.iterator }
+multi method pairs(::?CLASS:D:) { @!record.pairs }
 
-    multi method list(::?CLASS:D:) is raw { self }
+multi method antipairs(::?CLASS:D:) { @!record.antipairs }
 
-    multi method hash(::?CLASS:D:) is raw { @!record.hash }
+method ^arity($type is raw --> Int:_) {
+    my @fields := self.fields: $type;
+    @fields.elems
+}
 
-    method is-lazy(::?CLASS:_:) {
-        self.DEFINITE && @!record.is-lazy
-    }
+method ^get_field($type is raw, $key is raw) {
+    my @fields := self.fields: $type;
+    @fields.AT-POS: (@fields.elems andthen $key % $_ orelse $key)
+}
 
-    method cache(::?CLASS:_: --> ::?CLASS:D) {
-        self.DEFINITE
-          ?? @!record.is-lazy
-            ?? self.new(@!record.cache)
-            !! self
-          !! @(self).cache
-    }
+method ^declares_field($type is raw, $key is raw) {
+    my @fields := self.fields: $type;
+    @fields.EXISTS-POS: (@fields.elems andthen $key % $_ orelse $key)
+}
 
-    method eager(::?CLASS:_: --> ::?CLASS:D) {
-        self.DEFINITE
-          ?? @!record.is-lazy
-            ?? self.new(@!record.eager)
-            !! self
-          !! @(self).eager
-    }
+method ^enforce_singleton($type is raw, Str:D $operation --> Nil) {
+    my @fields := self.fields: $type;
+    X::Data::Record::Missing.new(
+        :$operation, :$type, :what<index>, :key(0), :field(@fields[0])
+    ).throw unless (@fields.elems andthen $_ == 1);
+}
 
-    method lazy(::?CLASS:_: --> ::?CLASS:D) {
-        self.DEFINITE
-          ?? @!record.is-lazy
-            ?? self
-            !! self.new(@!record.lazy)
-          !! @(self).lazy
-    }
+method ^coerce_void($type is raw, $key is raw) {
+    my @fields := self.fields: $type;
+    my $field  := @fields.AT-POS: $key % @fields.elems;
+    X::Data::Record::Definite.new(
+       :$type, :what<index>, :$key, :value($field)
+    ).throw if $field.HOW.archetypes.definite && $field.^definite;
+    $field
+}
 
-    multi method elems(::?CLASS:D:) { @!record.elems }
+method ^map_field($type is raw, $key is raw is copy, Mu $value is raw, :$mode = WRAP) is raw {
+    my @fields := self.fields: $type;
+    @fields.elems andthen $key := $key % $_;
+    @fields.EXISTS-POS($key)
+      ?? ($value @~~ @fields.AT-POS($key) :$mode)
+      !! $value
+}
 
-    multi method keys(::?CLASS:D:) { @!record.keys }
+method ^map_it_field(
+    $type is raw, $key is raw, Mu $field is raw, Mu $value is raw,
+    :$mode!,
+    :$keep!,
+    :$drop!,
+) is raw {
+    my @fields := self.fields: $type;
+    $value =:= IterationEnd
+      ?? self."keep_it_$keep"($type, $key, $field)
+      !! @fields.EXISTS-POS((@fields.elems andthen $key % $_ orelse $key))
+        ?? ($value @~~ $field :$mode)
+        !! self."drop_it_$drop"($type, $key, $field)
+}
 
-    multi method values(::?CLASS:D:) { @!record.values }
+method ^keep_it_missing($type is raw, $key is raw, Mu $field is raw --> IterationEnd) {
+    my @fields := self.fields: $type;
+    X::Data::Record::Missing.new(
+        :$*operation, :$type, :what<index>, :$key, :$field
+    ).throw if (@fields.elems andthen not $key %% $_);
+}
 
-    multi method kv(::?CLASS:D:) { @!record.kv }
+method ^keep_it_coercing($type is raw, $key is raw, Mu $field is raw) {
+    my @fields := self.fields: $type;
+    (@fields.elems andthen $key %% $_)
+      ?? IterationEnd
+      !! self.coerce_void($type, $key)
+}
 
-    multi method pairs(::?CLASS:D:) { @!record.pairs }
+method ^drop_it_never($type is raw, $key is raw, Mu $value is raw) {
+    $value
+}
 
-    multi method antipairs(::?CLASS:D:) { @!record.antipairs }
-
-    method ^arity($type is raw --> Int:_) {
-        my @fields := self.fields: $type;
-        @fields.elems
-    }
-
-    method ^get_field($type is raw, $key is raw) {
-        my @fields := self.fields: $type;
-        @fields.AT-POS: (@fields.elems andthen $key % $_ orelse $key)
-    }
-
-    method ^declares_field($type is raw, $key is raw) {
-        my @fields := self.fields: $type;
-        @fields.EXISTS-POS: (@fields.elems andthen $key % $_ orelse $key)
-    }
-
-    method ^enforce_singleton($type is raw, Str:D $operation --> Nil) {
-        my @fields := self.fields: $type;
-        X::Data::Record::Missing.new(
-            :$operation, :$type, :what<index>, :key(0), :field(@fields[0])
-        ).throw unless (@fields.elems andthen $_ == 1);
-    }
-
-    method ^coerce_void($type is raw, $key is raw) {
-        my @fields := self.fields: $type;
-        my $field  := @fields.AT-POS: $key % @fields.elems;
-        X::Data::Record::Definite.new(
-           :$type, :what<index>, :$key, :value($field)
-        ).throw if $field.HOW.archetypes.definite && $field.^definite;
-        $field
-    }
-
-    method ^map_field($type is raw, $key is raw is copy, Mu $value is raw, :$mode = WRAP) is raw {
-        my @fields := self.fields: $type;
-        @fields.elems andthen $key := $key % $_;
-        @fields.EXISTS-POS($key)
-          ?? ($value @~~ @fields.AT-POS($key) :$mode)
-          !! $value
-    }
-
-    method ^map_it_field(
-        $type is raw, $key is raw, Mu $field is raw, Mu $value is raw,
-        :$mode!,
-        :$keep!,
-        :$drop!,
-    ) is raw {
-        my @fields := self.fields: $type;
-        $value =:= IterationEnd
-          ?? self."keep_it_$keep"($type, $key, $field)
-          !! @fields.EXISTS-POS((@fields.elems andthen $key % $_ orelse $key))
-            ?? ($value @~~ $field :$mode)
-            !! self."drop_it_$drop"($type, $key, $field)
-    }
-
-    method ^keep_it_missing($type is raw, $key is raw, Mu $field is raw --> IterationEnd) {
-        my @fields := self.fields: $type;
-        X::Data::Record::Missing.new(
-            :$*operation, :$type, :what<index>, :$key, :$field
-        ).throw if (@fields.elems andthen not $key %% $_);
-    }
-
-    method ^keep_it_coercing($type is raw, $key is raw, Mu $field is raw) {
-        my @fields := self.fields: $type;
-        (@fields.elems andthen $key %% $_)
-          ?? IterationEnd
-          !! self.coerce_void($type, $key)
-    }
-
-    method ^drop_it_never($type is raw, $key is raw, Mu $value is raw) {
-        $value
-    }
-
-    method ^drop_it_again($type is raw, $key is raw, Mu $value is raw --> IterationEnd) {
-        next
-    }
+method ^drop_it_again($type is raw, $key is raw, Mu $value is raw --> IterationEnd) {
+    next
 }
 
 #|[ Iterator for lists that are to become records. Classes that do this role
