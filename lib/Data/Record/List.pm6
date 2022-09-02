@@ -1,5 +1,5 @@
 use v6.e.PREVIEW;
-use MetamodelX::RecorderHOW;
+use MetamodelX::RecordHOW;
 use MetamodelX::RecordTemplateHOW;
 use Data::Record::Mode;
 use Data::Record::Exceptions;
@@ -400,7 +400,7 @@ my class ArrayIterator is ListIterator {
     list's arity without using the elems method. ]
 
 multi sub circumfix:<[@ @]>(+@fields is raw, Str :$name --> Mu) is export {
-    my $obj := MetamodelX::RecorderHOW[
+    my $obj := MetamodelX::RecordHOW[
         List:D, Data::Record::List
     ].new_type: @fields, :$name;
     my $how := $obj.HOW;
@@ -408,7 +408,7 @@ multi sub circumfix:<[@ @]>(+@fields is raw, Str :$name --> Mu) is export {
 }
 multi sub circumfix:<[@ @]>(Block:D $block is raw, Str :$name --> Mu) is export {
     my $obj := MetamodelX::RecordTemplateHOW[
-        MetamodelX::RecorderHOW[List:D, Data::Record::List]
+        MetamodelX::RecordHOW[List:D, Data::Record::List]
     ].new_type: $block, :$name;
     my $how := $obj.HOW;
     $how.compose: $obj

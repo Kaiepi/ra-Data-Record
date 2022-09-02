@@ -1,7 +1,6 @@
 use v6.d;
 use Data::Record::Exceptions;
 use MetamodelX::RecordHOW;
-use MetamodelX::RecorderHOW;
 use MetamodelX::RecordTemplateHOW;
 use Test;
 
@@ -9,16 +8,16 @@ plan 2;
 
 my class Instance { method method() { } }
 
-my class Recorder does MetamodelX::RecorderHOW[List:D, Instance] { }
+my class Recorder does MetamodelX::RecordHOW[List:D, Instance] { }
 
-subtest 'MetamodelX::RecorderHOW', {
+subtest 'MetamodelX::RecordHOW', {
     plan 9;
 
     only term:<Anon> {
-        once MetamodelX::RecorderHOW[List, Instance].new_type(Empty).^compose
+        once Recorder.new_type(Empty).^compose
     }
     only term:<Named> {
-        once MetamodelX::RecorderHOW[List, Instance].new_type(Empty, :name<Named>).^compose
+        once Recorder.new_type(Empty, :name<Named>).^compose
     }
 
     lives-ok { Anon }, 'can create a recorder';

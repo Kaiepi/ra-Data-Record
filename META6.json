@@ -19,7 +19,6 @@
     "Data::Record::Operators" : "lib/Data/Record/Operators.pm6",
     "Data::Record::Tuple" : "lib/Data/Record/Tuple.pm6",
     "MetamodelX::RecordHOW" : "lib/MetamodelX/RecordHOW.pm6",
-    "MetamodelX::RecorderHOW" : "lib/MetamodelX/RecorderHOW.pm6",
     "MetamodelX::RecordTemplateHOW" : "lib/MetamodelX/RecordTemplateHOW.pm6"
   },
   "resources" : [ ],

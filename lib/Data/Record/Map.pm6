@@ -1,5 +1,5 @@
 use v6.d;
-use MetamodelX::RecorderHOW;
+use MetamodelX::RecordHOW;
 use MetamodelX::RecordTemplateHOW;
 use Data::Record::Mode;
 use Data::Record::Instance;
@@ -329,7 +329,7 @@ my class MapIterator does PredictiveIterator {
 }
 
 multi sub circumfix:<{@ @}>(Map:D $fields, Str:_ :$name, Bool:D :$structural = False) is export {
-    my $obj := MetamodelX::RecorderHOW[
+    my $obj := MetamodelX::RecordHOW[
         Map:D, Data::Record::Map
     ].new_type: $fields<>, :$name;
     my $how := $obj.HOW;
@@ -337,7 +337,7 @@ multi sub circumfix:<{@ @}>(Map:D $fields, Str:_ :$name, Bool:D :$structural = F
     $how.compose: $obj
 }
 multi sub circumfix:<{@ @}>(*@pairs, Str:_ :$name, Bool:D :$structural = False) is export {
-    my $obj := MetamodelX::RecorderHOW[
+    my $obj := MetamodelX::RecordHOW[
         Map:D, Data::Record::Map
     ].new_type: Map.new(@pairs), :$name;
     my $how := $obj.HOW;
@@ -346,7 +346,7 @@ multi sub circumfix:<{@ @}>(*@pairs, Str:_ :$name, Bool:D :$structural = False) 
 }
 multi sub circumfix:<{@ @}>(Block:D $block, Str:_ :$name, Bool:D :$structural = False) is export {
     my $obj := MetamodelX::RecordTemplateHOW[
-        MetamodelX::RecorderHOW[Map:D, Data::Record::Map]
+        MetamodelX::RecordHOW[Map:D, Data::Record::Map]
     ].new_type: $block, :$name;
     my $how := $obj.HOW;
     $how.yield_annotations($obj) = $structural;

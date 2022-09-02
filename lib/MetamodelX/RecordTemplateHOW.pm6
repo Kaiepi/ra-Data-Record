@@ -1,9 +1,9 @@
 use v6.d;
 use annotations::containers;
 use annotations::how;
-use MetamodelX::RecorderHOW;
+use MetamodelX::RecordHOW;
 my atomicint $ID = 1;
-unit role MetamodelX::RecordTemplateHOW[MetamodelX::RecorderHOW ::P]
+unit role MetamodelX::RecordTemplateHOW[MetamodelX::RecordHOW ::P]
      does MetamodelX::AnnotationHOW[Buffer, Metamodel::ClassHOW];
 
 my \F = P.for;
@@ -47,7 +47,7 @@ method publish_type_cache(::?ROLE:D: Mu $obj is raw) is raw {
 
 #|[ A number of annotations we promise to keep via this specific parametric HOW. ]
 method higher_annotations(::?ROLE:_: $? --> 3) { }
-#=[ This is separate from MetamodelX::RecorderHOW's annotations because those
+#=[ This is separate from MetamodelX::RecordHOW's annotations because those
     types have the delegate as a parent ordinarily. ]
 
 #|[ A position for a list of higher annotations for this metaobject. ]

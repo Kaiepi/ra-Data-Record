@@ -1,5 +1,5 @@
 use v6.d;
-use MetamodelX::RecorderHOW;
+use MetamodelX::RecordHOW;
 use MetamodelX::RecordTemplateHOW;
 use Data::Record::Mode;
 use Data::Record::Exceptions;
@@ -304,7 +304,7 @@ my class TupleIterator does Iterator {
 }
 
 multi sub circumfix:«<@ @>»(+@fields is raw, Str:_ :$name --> Mu) is export {
-    my $obj := MetamodelX::RecorderHOW[
+    my $obj := MetamodelX::RecordHOW[
         List:D, Data::Record::Tuple
     ].new_type: @fields, :$name;
     my $how := $obj.HOW;
@@ -312,7 +312,7 @@ multi sub circumfix:«<@ @>»(+@fields is raw, Str:_ :$name --> Mu) is export {
 }
 multi sub circumfix:«<@ @>»(Block:D $block is raw, Str:_ :$name --> Mu) is export {
     my $obj := MetamodelX::RecordTemplateHOW[
-        MetamodelX::RecorderHOW[List:D, Data::Record::Tuple]
+        MetamodelX::RecordHOW[List:D, Data::Record::Tuple]
     ].new_type: $block, :$name;
     my $how := $obj.HOW;
     $how.compose: $obj
