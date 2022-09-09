@@ -38,13 +38,6 @@ method new_type(::?ROLE:_: Block:D $body_block is raw, Str :$name, *%rest) {
     $obj
 }
 
-method publish_type_cache(::?ROLE:D: Mu $obj is raw) is raw {
-    use nqp;
-    Metamodel::Primitives.configure_type_checking: $obj, self.mro($obj).map({
-        slip $_, do |$_.^role_typecheck_list if nqp::can($_.HOW, 'role_typecheck_list')
-    })
-}
-
 #|[ A number of annotations we promise to keep via this specific parametric HOW. ]
 method higher_annotations(::?ROLE:_: $? --> 3) { }
 #=[ This is separate from MetamodelX::RecordHOW's annotations because those
