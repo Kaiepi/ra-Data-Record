@@ -20,6 +20,15 @@ method new_type(::?ROLE:_: F(Mu) $fields is raw, D $template? is raw, :$name, *%
     $obj
 }
 
+#|[ Ensures that an MRO-based type_check not be called. ]
+method publish_type_cache(::?ROLE:D: Mu $obj is raw) {
+    use nqp;
+    my $result := callsame;
+    nqp::settypecheckmode($obj.WHAT,
+      nqp::const::TYPE_CHECK_CACHE_DEFINITIVE);
+    $result
+}
+
 #|[ A number of annotations we promise to keep via this specific HOW. ]
 method annotations(::?ROLE:_: $? --> 3) { }
 #=[ MROish; typically called with .* dispatch. ]

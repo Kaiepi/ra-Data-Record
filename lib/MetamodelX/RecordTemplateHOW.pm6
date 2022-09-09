@@ -38,6 +38,15 @@ method new_type(::?ROLE:_: Block:D $body_block is raw, Str :$name, *%rest) {
     $obj
 }
 
+#|[ Ensures that an MRO-based type_check not be called. ]
+method publish_type_cache(::?ROLE:D: Mu $obj is raw) {
+    use nqp;
+    my $result := callsame;
+    nqp::settypecheckmode($obj.WHAT,
+      nqp::const::TYPE_CHECK_CACHE_DEFINITIVE);
+    $result
+}
+
 #|[ A number of annotations we promise to keep via this specific parametric HOW. ]
 method higher_annotations(::?ROLE:_: $? --> 3) { }
 #=[ This is separate from MetamodelX::RecordHOW's annotations because those
