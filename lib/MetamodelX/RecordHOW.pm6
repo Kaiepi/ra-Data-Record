@@ -21,7 +21,7 @@ method new_type(::?ROLE:_: F(Mu) $fields is raw, D $template? is raw, :$name, *%
 }
 
 #|[ Ensures that an MRO-based type_check not be called. ]
-method publish_type_cache(::?ROLE:D: Mu $obj is raw) {
+method publish_type_cache(::?ROLE:D: Mu $obj is raw) is raw {
     use nqp;
     my $result := callsame;
     nqp::settypecheckmode($obj.WHAT,

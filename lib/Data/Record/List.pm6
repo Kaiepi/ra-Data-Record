@@ -91,25 +91,25 @@ do {
     }
 }
 
-method EXISTS-POS(::?CLASS:D: Mu $pos is raw --> Bool:D) {
+method EXISTS-POS(::?CLASS:D: $pos --> Bool:D) {
     @!record.EXISTS-POS: $pos
 }
 
-method AT-POS(::?CLASS:D: Mu $pos is raw --> Mu) is raw {
+method AT-POS(::?CLASS:D: $pos --> Mu) is raw {
     @!record.AT-POS: $pos
 }
 
-method BIND-POS(::?CLASS:D: Mu $pos is raw, Mu $value is raw --> Mu) is raw {
+method BIND-POS(::?CLASS:D: $pos, Mu $value is raw --> Mu) is raw {
     CONTROL { .flunk: 'binding' when CX::Rest }
     @!record.BIND-POS: $pos, self.^map_field: $pos, $value
 }
 
-method ASSIGN-POS(::?CLASS:D: Mu $pos is raw, Mu $value is raw --> Mu) is raw {
+method ASSIGN-POS(::?CLASS:D: $pos, Mu $value is raw --> Mu) is raw {
     CONTROL { .flunk: 'assignment' when CX::Rest }
     @!record.ASSIGN-POS: $pos, self.^map_field: $pos, $value
 }
 
-method DELETE-POS(::?CLASS:D: Mu $pos is raw --> Mu) is raw {
+method DELETE-POS(::?CLASS:D: $pos --> Mu) is raw {
     # XXX: This should be typechecking for the definiteness of the field
     # this position corresponds to and ensuring that, if this will leave
     # an empty space in the record, the field is not definite; however,
@@ -203,29 +203,29 @@ multi method pairs(::?CLASS:D:) { @!record.pairs }
 
 multi method antipairs(::?CLASS:D:) { @!record.antipairs }
 
-method ^arity($type is raw --> Int:_) {
+method ^arity(Mu $type is raw --> Int:_) {
     my @fields := self.fields: $type;
     @fields.elems
 }
 
-method ^get_field($type is raw, $key is raw) {
+method ^get_field(Mu $type is raw, $key) {
     my @fields := self.fields: $type;
     @fields.AT-POS: (@fields.elems andthen $key % $_ orelse $key)
 }
 
-method ^declares_field($type is raw, $key is raw) {
+method ^declares_field(Mu $type is raw, $key is raw) {
     my @fields := self.fields: $type;
     @fields.EXISTS-POS: (@fields.elems andthen $key % $_ orelse $key)
 }
 
-method ^enforce_singleton($type is raw, Str:D $operation --> Nil) {
+method ^enforce_singleton(Mu $type is raw, Str:D $operation --> Nil) {
     my @fields := self.fields: $type;
     X::Data::Record::Missing.new(
         :$operation, :$type, :what<index>, :key(0), :field(@fields[0])
     ).throw unless (@fields.elems andthen $_ == 1);
 }
 
-method ^coerce_void($type is raw, $key is raw) {
+method ^coerce_void(Mu $type is raw, $key) {
     my @fields := self.fields: $type;
     my $field  := @fields.AT-POS: $key % @fields.elems;
     X::Data::Record::Definite.new(
@@ -234,16 +234,16 @@ method ^coerce_void($type is raw, $key is raw) {
     $field
 }
 
-method ^map_field($type is raw, $key is raw is copy, Mu $value is raw, :$mode = WRAP) is raw {
+method ^map_field(Mu $type is raw, $key is copy, Mu $value is raw, :$mode = WRAP) is raw {
     my @fields := self.fields: $type;
-    @fields.elems andthen $key := $key % $_;
+    @fields.elems andthen $key %= $_;
     @fields.EXISTS-POS($key)
       ?? ($value @~~ @fields.AT-POS($key) :$mode)
       !! $value
 }
 
 method ^map_it_field(
-    $type is raw, $key is raw, Mu $field is raw, Mu $value is raw,
+    Mu $type is raw, $key, Mu $field is raw, Mu $value is raw,
     :$mode!,
     :$keep!,
     :$drop!,
@@ -256,25 +256,25 @@ method ^map_it_field(
         !! self."drop_it_$drop"($type, $key, $field)
 }
 
-method ^keep_it_missing($type is raw, $key is raw, Mu $field is raw --> IterationEnd) {
+method ^keep_it_missing(Mu $type is raw, $key, Mu $field is raw --> IterationEnd) {
     my @fields := self.fields: $type;
     X::Data::Record::Missing.new(
         :$*operation, :$type, :what<index>, :$key, :$field
     ).throw if (@fields.elems andthen not $key %% $_);
 }
 
-method ^keep_it_coercing($type is raw, $key is raw, Mu $field is raw) {
+method ^keep_it_coercing(Mu $type is raw, $key, Mu $field is raw) {
     my @fields := self.fields: $type;
     (@fields.elems andthen $key %% $_)
       ?? IterationEnd
       !! self.coerce_void($type, $key)
 }
 
-method ^drop_it_never($type is raw, $key is raw, Mu $value is raw) {
+method ^drop_it_never(Mu $type is raw, $key, Mu $value is raw) {
     $value
 }
 
-method ^drop_it_again($type is raw, $key is raw, Mu $value is raw --> IterationEnd) {
+method ^drop_it_again(Mu $type is raw, $key, Mu $value is raw --> IterationEnd) {
     next
 }
 

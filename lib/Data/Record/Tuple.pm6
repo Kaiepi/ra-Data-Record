@@ -93,22 +93,22 @@ method EXISTS-POS(::?CLASS:D: Int:D $pos --> Bool:D) {
     @!record.EXISTS-POS: $pos
 }
 
-method AT-POS(::?CLASS:D: Mu $pos is raw) is raw {
+method AT-POS(::?CLASS:D: Mu $pos) is raw {
     die self.^suggest_bounds: $pos unless self.^declares_field: $pos;
     @!record.AT-POS: $pos
 }
 
-method BIND-POS(::?CLASS:D: Mu $pos is raw, Mu $value is raw) is raw {
+method BIND-POS(::?CLASS:D: Mu $pos, Mu $value is raw) is raw {
     CONTROL { .flunk: 'binding' when CX::Rest }
     @!record.BIND-POS: $pos, self.^map_field: $pos, $value
 }
 
-method ASSIGN-POS(::?CLASS:D: Mu $pos is raw, Mu $value is raw) is raw {
+method ASSIGN-POS(::?CLASS:D: Mu $pos, Mu $value is raw) is raw {
     CONTROL { .flunk: 'assignment' when CX::Rest }
     @!record.ASSIGN-POS: $pos, self.^map_field: $pos, $value
 }
 
-method DELETE-POS(::?CLASS:D: Mu $pos is raw --> Nil) is raw {
+method DELETE-POS(::?CLASS:D: Mu $pos --> Nil) is raw {
     self.^enforce_immutability: 'deletion'
 }
 
@@ -165,11 +165,11 @@ multi method pairs(::?CLASS:D:) { @!record.pairs }
 
 multi method antipairs(::?CLASS:D:) { @!record.antipairs }
 
-method ^get_field($type is raw, $key is raw) {
+method ^get_field(Mu $type is raw, $key) {
     @.fields($type).AT-POS($key)
 }
 
-method ^declares_field($type is raw, $key is raw) {
+method ^declares_field(Mu $type is raw, $key) {
     @.fields($type).EXISTS-POS($key)
 }
 
@@ -177,12 +177,12 @@ method ^enforce_immutability(::THIS, $operation --> Nil) {
     X::Data::Record::Immutable.new(:$operation, :type(THIS)).throw
 }
 
-method ^suggest_bounds(::THIS, $key is raw --> Exception:D) {
+method ^suggest_bounds(::THIS, $key --> Exception:D) {
     X::Data::Record::OutOfBounds.new: :type(THIS), :what<index>, :$key
 }
 
 method ^map_field(
-    $type is raw, $key is raw, Mu $value is raw,
+    Mu $type is raw, $key, Mu $value is raw,
     Data::Record::Mode:D :$mode = WRAP,
     :$drop = 'unbounded'
 ) is raw {
@@ -192,12 +192,12 @@ method ^map_field(
       !! self."drop_$drop"($type, $key, $value)
 }
 
-method ^drop_unbounded(::THIS $type is raw, $key is raw, Mu $value is raw --> Nil) {
+method ^drop_unbounded(::THIS Mu $type is raw, $key, Mu $value is raw --> Nil) {
     self.suggest_bounds($type, $key).throw
 }
 
 method ^map_it_field(
-    $type is raw, $key is raw, Mu $field is raw, Mu $value is raw,
+    Mu $type is raw, $key, Mu $field is raw, Mu $value is raw,
     :$mode!,
     :$drop!,
     :$keep!,
@@ -209,7 +209,7 @@ method ^map_it_field(
         !! ($value @~~ $field :$mode)
 }
 
-method ^drop_it_more($type is raw, $key is raw, Mu $value is raw --> IterationEnd) {
+method ^drop_it_more(Mu $type is raw, $key, Mu $value is raw --> IterationEnd) {
     X::Data::Record::Extraneous.new(
         :$*operation, :$type, :what<index>, :$key, :$value
     ).throw unless $value =:= IterationEnd;
@@ -219,11 +219,11 @@ method ^drop_it_less(Mu, Mu, Mu --> IterationEnd) {
     # Follow through on a return.
 }
 
-method ^keep_it_missing($type is raw, $key is raw, Mu $field is raw --> IterationEnd) {
+method ^keep_it_missing(Mu $type is raw, $key, Mu $field is raw --> IterationEnd) {
     X::Data::Record::Missing.new(:$*operation, :$type, :what<index>, :$key, :$field).throw;
 }
 
-method ^keep_it_coercing($type is raw, $key is raw, Mu $field is raw) is raw {
+method ^keep_it_coercing(Mu $type is raw, $key, Mu $field is raw) is raw {
     X::Data::Record::Definite.new(
         :$type, :what<index>, :$key, :value($field)
     ).throw if $field.HOW.archetypes.definite && $field.^definite;
@@ -240,7 +240,8 @@ my class TupleIterator does Iterator {
     has Iterator:D            $.fields    is required;
     has Iterator:D            $.values    is required;
 
-    submethod BUILD(::?CLASS:D: Mu :$!type! is raw, :$!mode!, :$!operation!, :$values! is raw --> Nil) {
+    submethod BUILD(::?CLASS:D: Mu :$type! is raw, :$!mode!, :$!operation!, :$values! is raw --> Nil) {
+        $!type   := $type;
         $!keys   := (0..*).iterator;
         $!fields := $!type.^fields.iterator;
         $!values := $values.iterator;

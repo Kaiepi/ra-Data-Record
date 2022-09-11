@@ -39,7 +39,7 @@ method new_type(::?ROLE:_: Block:D $body_block is raw, Str :$name, *%rest) {
 }
 
 #|[ Ensures that an MRO-based type_check not be called. ]
-method publish_type_cache(::?ROLE:D: Mu $obj is raw) {
+method publish_type_cache(::?ROLE:D: Mu $obj is raw) is raw {
     use nqp;
     my $result := callsame;
     nqp::settypecheckmode($obj.WHAT,

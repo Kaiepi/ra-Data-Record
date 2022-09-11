@@ -174,27 +174,27 @@ multi method antipairs(::?CLASS:D:) { %!record.antipairs }
 
 method ^annotations($? --> 1) { }
 
-method ^structural($type is raw --> Bool:D) {
+method ^structural(Mu $type is raw --> Bool:D) {
     self.yield_annotations($type)[once self.annotation_offset($type)]<>
 }
 
-method ^metamode($type is raw) {
+method ^metamode(Mu $type is raw) {
     # XXX: Inverted?? Come on.
     self.structural($type) ?? 'unstructured' !! 'structured'
 }
 
-method ^get_field($type is raw, $key is raw) {
+method ^get_field(Mu $type is raw, $key is raw) {
     my %fields := self.fields: $type;
     %fields.AT-KEY($key)
 }
 
-method ^declares_field($type is raw, $key is raw) {
+method ^declares_field(Mu $type is raw, $key is raw) {
     my %fields := self.fields: $type;
     %fields.EXISTS-KEY($key)
 }
 
 method ^map_field(
-    $type is raw, $key is raw, Mu $value is raw,
+    Mu $type is raw, $key is raw, Mu $value is raw,
     Data::Record::Mode:D :$mode = WRAP,
     :$drop = self.structural($type) ?? 'none' !! 'unbounded',
 ) {
@@ -205,7 +205,7 @@ method ^map_field(
 }
 
 method ^map_to_field(
-    $type is raw, $key is raw, Map:D $values is raw,
+    Mu $type is raw, $key is raw, Map:D $values is raw,
     :$mode = WRAP,
     :$drop = self.structural($type) ?? 'none' !! 'unbounded',
     :$keep!,
@@ -218,33 +218,33 @@ method ^map_to_field(
       !! self."drop_$drop"($type, $key, $values.AT-KEY($key))
 }
 
-method ^drop_none($type is raw, $key is raw, Mu $value is raw) is raw {
+method ^drop_none(Mu $type is raw, $key is raw, Mu $value is raw) is raw {
     $value
 }
 
-method ^drop_unbounded($type is raw, $key is raw, Mu $value is raw) {
+method ^drop_unbounded(Mu $type is raw, $key is raw, Mu $value is raw) {
     X::Data::Record::OutOfBounds.new(:$type, :what<key>, :$key).throw;
     $value
 }
 
-method ^drop_more($type is raw, $key is raw, Mu $value is raw) is raw {
+method ^drop_more(Mu $type is raw, $key is raw, Mu $value is raw) is raw {
     X::Data::Record::Extraneous.new(:$*operation, :$type, :what<key>, :$key, :$value).throw;
     $value
 }
 
-method ^drop_again($type is raw, $key is raw, Mu $value is raw) is raw {
+method ^drop_again(Mu $type is raw, $key is raw, Mu $value is raw) is raw {
     next;
     $value
 }
 
-method ^keep_none($type is raw, $key is raw, Mu $field is raw --> Empty) { }
+method ^keep_none(Mu $type is raw, $key is raw, Mu $field is raw --> Empty) { }
 
-method ^keep_missing($type is raw, $key is raw, Mu $field is raw) {
+method ^keep_missing(Mu $type is raw, $key is raw, Mu $field is raw) {
     X::Data::Record::Missing.new(:$*operation, :$type, :what<key>, :$key, :$field).throw;
     self.keep_coercing: $type, $key, $field
 }
 
-method ^keep_coercing($type is raw, $key is raw, Mu $field is raw) {
+method ^keep_coercing(Mu $type is raw, $key is raw, Mu $field is raw) {
     X::Data::Record::Definite.new(:$type, :what<index>, :$key, :value($field)).throw
         if Metamodel::Primitives.is_type($field.HOW, Metamodel::DefiniteHOW) && $field.^definite;
     $field
@@ -267,7 +267,7 @@ my class MapIterator does PredictiveIterator {
         $!arity  := $keys.elems;
     }
 
-    method new(::?CLASS:_: $type is raw, $meta, $mode, $operation, $values is raw --> ::?CLASS:D) {
+    method new(::?CLASS:_: Mu $type is raw, $meta, $mode, $operation, $values is raw --> ::?CLASS:D) {
         self.bless: :$type, :$meta, :$mode, :$operation, :$values
     }
 
