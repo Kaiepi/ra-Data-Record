@@ -236,13 +236,12 @@ my class TupleIterator does Iterator {
     has Data::Record::Tuple:U $.type      is required;
     has Data::Record::Mode:D  $.mode      is required;
     has Str:D                 $.operation is required;
-    has Iterator:D            $.keys      is required;
+    has Int:D                 $.key       is default(0);
     has Iterator:D            $.fields    is required;
     has Iterator:D            $.values    is required;
 
     submethod BUILD(::?CLASS:D: Mu :$type! is raw, :$!mode!, :$!operation!, :$values! is raw --> Nil) {
         $!type   := $type;
-        $!keys   := (0..*).iterator;
         $!fields := $!type.^fields.iterator;
         $!values := $values.iterator;
     }
@@ -266,7 +265,7 @@ my class TupleIterator does Iterator {
     method wrap(::?CLASS:D:) is raw {
         CONTROL { .flunk: $!operation when CX::Rest }
         $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            $!key++, $!fields.pull-one, $!values.pull-one,
             :$!mode, :drop<more>, :keep<missing>
     }
 
@@ -277,7 +276,7 @@ my class TupleIterator does Iterator {
     method consume(::?CLASS:D:) is raw {
         CONTROL { .flunk: $!operation when CX::Rest }
         $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            $!key++, $!fields.pull-one, $!values.pull-one,
             :$!mode, :drop<less>, :keep<missing>
     }
 
@@ -288,7 +287,7 @@ my class TupleIterator does Iterator {
     method subsume(::?CLASS:D:) is raw {
         CONTROL { .flunk: $!operation when CX::Rest }
         $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            $!key++, $!fields.pull-one, $!values.pull-one,
             :$!mode, :drop<more>, :keep<coercing>
     }
 
@@ -298,7 +297,7 @@ my class TupleIterator does Iterator {
     method coerce(::?CLASS:D:) is raw {
         CONTROL { .flunk: $!operation when CX::Rest }
         $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            $!key++, $!fields.pull-one, $!values.pull-one,
             :$!mode, :drop<less>, :keep<coercing>
     }
 }

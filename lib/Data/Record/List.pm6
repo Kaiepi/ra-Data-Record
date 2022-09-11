@@ -285,13 +285,12 @@ my class ListIterator does Iterator {
     has Data::Record::List:U $.type      is required;
     has Data::Record::Mode:D $.mode      is required;
     has Str:D                $.operation is required;
-    has Iterator:D           $!keys      is required;
+    has Int:D                $!key       is default(0);
     has Iterator:D           $!fields    is required;
     has Iterator:D           $!values    is required;
 
     submethod BUILD(::?CLASS:D: :$type! is raw, :$!mode!, :$!operation!, :$values! --> Nil) {
         $!type   := $type;
-        $!keys   := (0..*).iterator;
         $!fields := (|$type.^fields xx *).iterator;
         $!values := $values.iterator;
     }
@@ -316,7 +315,7 @@ my class ListIterator does Iterator {
     method wrap(::?CLASS:D:) is raw {
         CONTROL { .flunk: $!operation when CX::Rest }
         $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            $!key++, $!fields.pull-one, $!values.pull-one,
             :$!mode, :drop<never>, :keep<missing>
     }
 
@@ -330,7 +329,7 @@ my class ListIterator does Iterator {
             # 1st pass - scan for an existent field.
             CONTROL { last when CX::Rest }
             return-rw $!type.^map_it_field:
-                ($key := $!keys.pull-one), ($field := $!fields.pull-one), $!values.pull-one,
+                ($key := $!key++), ($field := $!fields.pull-one), $!values.pull-one,
                 :$!mode, :drop<again>, :keep<missing>;
         }
         loop {
@@ -349,7 +348,7 @@ my class ListIterator does Iterator {
     method subsume(::?CLASS:D:) is raw {
         CONTROL { .flunk: $!operation when CX::Rest }
         $!type.^map_it_field:
-            $!keys.pull-one, $!fields.pull-one, $!values.pull-one,
+            $!key++, $!fields.pull-one, $!values.pull-one,
             :$!mode, :drop<never>, :keep<coercing>
     }
 
@@ -364,7 +363,7 @@ my class ListIterator does Iterator {
             # 1st pass - scan for an existent field.
             CONTROL { last when CX::Rest }
             return-rw $!type.^map_it_field:
-                ($key := $!keys.pull-one), ($field := $!fields.pull-one), $!values.pull-one,
+                ($key := $!key++), ($field := $!fields.pull-one), $!values.pull-one,
                 :$!mode, :drop<again>, :keep<coercing>;
         }
         loop {
