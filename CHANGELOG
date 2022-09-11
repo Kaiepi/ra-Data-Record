@@ -69,3 +69,16 @@ v0.2.5:
 
 v0.2.6:
     - Point the module auth field to zef:Kaiepi.
+
+v1.0.0:
+    - Scrap and rewrite MetamodelX::RecordHOW and MetamodelX::RecordTemplateHOW
+      in terms of the now external annotations library.
+    - Introduce ^is_anonymous and ^anonymous_id metamethods on all record
+      instances.
+    - Introduce Data::Record::Mode and associated multis on new for a more
+      programmatic approach to construction.
+    - Introduce Data::Record::Lifter and the associated infix:<@~~> lifting
+      operator to manage typechecks in record instances.
+    - Typechecks in record instances are handled from more granular metamethods
+      now. The lack of inline may make for a performance penalty on iteration.
+    - Use v6.e.PREVIEW internally in some spots.
