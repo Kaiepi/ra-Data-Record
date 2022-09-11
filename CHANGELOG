@@ -82,3 +82,6 @@ v1.0.0:
     - Typechecks in record instances are handled from more granular metamethods
       now. The lack of inline may make for a performance penalty on iteration.
     - Use v6.e.PREVIEW internally in some spots.
+
+v1.0.1:
+    - Update copyright year to 2022.
