@@ -7,7 +7,7 @@
   "description" : "Record types!",
   "license" : "Artistic-2.0",
   "name" : "Data::Record",
-  "perl" : "6.e.PREVEIW",
+  "perl" : "6.e.PREVIEW",
   "provides" : {
     "Data::Record" : "lib/Data/Record.pm6",
     "Data::Record::Exceptions" : "lib/Data/Record/Exceptions.pm6",
