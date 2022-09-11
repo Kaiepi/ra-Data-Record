@@ -10,14 +10,20 @@ subtest 'basic', {
     plan 55;
 
     my Str:D $name = 'IntList';
-    sub term:<IntList> { once [@ Int:D @]:$name }
+
+    only term:<IntList> {
+        once [@ Int:D @]:$name
+    }
+    only term:<IntStrList> {
+        once [@ Int:D, Str:D @]:name<IntStrList>
+    }
 
     lives-ok { IntList }, 'can create record list types';
     is IntList.^name, $name,
       'names get passed around when creating record list types OK';
     is IntList.raku, "[@ Int:D @]:name('$name')",
       'record list types have the correct .raku';
-    cmp-ok IntList.for, &[=:=], List,
+    cmp-ok IntList.for, &[=:=], List:D,
       'record list types are for lists';
     cmp-ok IntList.fields, &[eqv], (Int:D,),
       'record list types have the correct parameters';
@@ -137,8 +143,6 @@ subtest 'basic', {
     cmp-ok @list, &[eqv], [1, 2, 3, 4, 5, 6],
       'can append values to a list';
 
-    sub term:<IntStrList> { once [@ Int:D, Str:D @]:name<IntStrList> }
-
     lives-ok { IntStrList }, 'can create multi-field record list types';
 
     nok (1,'a',2) ~~ IntStrList,
@@ -214,8 +218,12 @@ subtest 'basic', {
 subtest 'generic', {
     plan 4;
 
-    sub term:<PList>    { once [@{ $^a }@]:name<PList> }
-    sub term:<PIntList> { once PList.^parameterize: Int:D }
+    only term:<PList> {
+        once [@{ $^a }@]:name<PList>
+    }
+    only term:<PIntList> {
+        once PList.^parameterize: Int:D
+    }
 
     lives-ok { PList }, 'can create a generic list';
     lives-ok { PIntList }, 'can parameterize generic lists';
@@ -230,7 +238,9 @@ subtest 'generic', {
 subtest 'nested', {
     plan 8;
 
-    sub term:<NIntList> { once [@ [@ Int:D @] @]:name<NIntList> }
+    only term:<NIntList> {
+        once [@ [@ Int:D @] @]:name<NIntList>
+    }
 
     lives-ok { NIntList }, 'can create nested lists';
     cmp-ok ((1,),), &[~~], NIntList,
@@ -259,12 +269,17 @@ subtest 'nested', {
 };
 
 subtest 'lazy', {
-    plan 4;
+    plan 6;
 
-    sub term:<IntList> { once [@ Int:D @]:name<IntList> }
+    only term:<IntList> {
+        once [@ Int:D @]:name<IntList>
+    }
+    only term:<WowItsList> {
+        once [@ * xx * @]:name<WowItsList>
+    }
 
-    my Promise:D $reified   .= new;
-    my           @instance;
+    my $reified := Promise.new;
+    my @instance;
     lives-ok {
         @instance := (lazy gather {
             $reified.keep;
@@ -278,6 +293,13 @@ subtest 'lazy', {
         @instance.push: 2
     }, X::Cannot::Lazy,
       'pushing to lazy arrays does not throw until Array decides it should';
+
+    lives-ok {
+        (1, <2>, 3e0, v4) ~~ WowItsList
+    }, 'can smartmatch a list against a record list with lazy fields';
+    lives-ok {
+        (1, <2>, 3e0, v4) (><) WowItsList
+    }, 'can typecheck a record list with lazy fields';
 };
 
 # vim: ft=perl6 sw=4 ts=4 sts=4 et

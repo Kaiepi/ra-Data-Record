@@ -1,61 +1,60 @@
 use v6.d;
-use Data::Record::Exceptions;
-unit class MetamodelX::RecordHOW is Metamodel::ClassHOW;
+use annotations::containers;
+use annotations::how;
+my atomicint $ID = 1;
+unit role MetamodelX::RecordHOW[::F, ::D]
+     does MetamodelX::AnnotationHOW[Buffer, Metamodel::ClassHOW];
 
-has Mu $!template;
-has Mu $!delegate;
-has    @!fields;
-has    %!parameters;
+#|[ The type of field. ]
+method for(::?ROLE:_: Mu $?) is raw { F }
 
-method new_type(::?CLASS:_: Str:_ :$name, |args --> Mu) {
-    our Str:D constant ANON_NAME = '<anon record>';
-    callwith name => $name // ANON_NAME, |args
+#|[ A class to which to delegate method calls. ]
+method delegate(::?ROLE:_: Mu $?) is raw { D }
+
+method new_type(::?ROLE:_: F(Mu) $fields is raw, D $template? is raw, :$name, *%rest) is raw {
+    my uint $id = !$name.DEFINITE && $ID⚛++;
+    my $obj := callwith :name($id ?? "<anon record $id>" !! $name), |%rest;
+    my $how := $obj.HOW;
+    $how.ANN = $id, $template, $fields;
+    $how.add_parent: $obj, $template;
+    $obj
 }
 
-method template(::?CLASS:D: Mu --> Mu) { $!template }
-
-method set_template(::?CLASS:D: Mu $obj is raw, Mu $template is raw --> Mu) {
-    if self.is_composed: $obj {
-        die X::Data::Record::Composed.new:
-            type      => $obj,
-            operation => 'set the template for'
-    } else {
-        $!template := $template
-    }
+#|[ Ensures that an MRO-based type_check not be called. ]
+method publish_type_cache(::?ROLE:D: Mu $obj is raw) is raw {
+    use nqp;
+    my $result := callsame;
+    nqp::settypecheckmode($obj.WHAT,
+      nqp::const::TYPE_CHECK_CACHE_DEFINITIVE);
+    $result
 }
 
-method delegate(::?CLASS:D: Mu --> Mu) { $!delegate }
+#|[ A number of annotations we promise to keep via this specific HOW. ]
+method annotations(::?ROLE:_: $? --> 3) { }
+#=[ MROish; typically called with .* dispatch. ]
 
-method set_delegate(::?CLASS:D: Mu $obj is raw, Mu $delegate is raw --> Mu) {
-    if self.is_composed: $obj {
-        die X::Data::Record::Composed.new:
-            type      => $obj,
-            operation => 'set the delegate for'
-    } else {
-        $!delegate := $delegate
-    }
+#|[ A position for a list of annotations for this metaobject. ]
+method annotation_offset(::?ROLE:_: Mu $obj? is raw --> Int:D) {
+    self.*annotations($obj).skip.sum
+}
+#=[ Depending on this in a subtype requires an annotations offset to skip. ]
+
+#|[ The fields defining this record type. ]
+method fields(::?ROLE:D: Mu $obj is raw) {
+    self.ANN[2]<>
 }
 
-method fields(::?CLASS:D: Mu --> List:D) { @!fields }
-
-method set_fields(::?CLASS:D: Mu $obj is raw, +fields --> List:D) {
-    if self.is_composed: $obj {
-        die X::Data::Record::Composed.new:
-            type      => $obj,
-            operation => 'set the fields for'
-    } else {
-        @!fields := fields
-    }
+#|[ An origin for this record; should be the delegate by default. ]
+method template(::?ROLE:D: Mu $obj is raw) is raw {
+    self.ANN[1]<>
 }
 
-method parameters(::?CLASS:D: Mu --> Map:D) { %!parameters }
+#|[ An ID given to anonymous records. ]
+method anonymous_id(::?ROLE:D: Mu $obj is raw --> uint) {
+    self.ANN[0]<>
+}
 
-method set_parameters(::?CLASS:D: Mu $obj is raw, *%parameters --> Map:D) {
-    if self.is_composed: $obj {
-        die X::Data::Record::Composed.new:
-            type      => $obj,
-            operation => 'set the parameters for'
-    } else {
-        %!parameters := %parameters.Map
-    }
+#|[ Whether or not this is an anonymous record. ]
+method is_anonymous(::?ROLE:D: Mu $obj? is raw --> Bool:D) {
+    ?self.anonymous_id($obj)
 }

@@ -6,65 +6,52 @@ use Test;
 
 plan 2;
 
-subtest 'MetamodelX::RecordHOW', {
-    plan 10;
+my class Instance { method method() { } }
 
-    sub term:<Record> { once MetamodelX::RecordHOW.new_type: :name<Record> }
-    lives-ok { Record }, 'can create new record types';
+my class Recorder does MetamodelX::RecordHOW[List:D, Instance] { }
+
+subtest 'MetamodelX::RecordHOW', {
+    plan 9;
+
+    only term:<Anon> {
+        once Recorder.new_type(Empty).^compose
+    }
+    only term:<Named> {
+        once Recorder.new_type(Empty, :name<Named>).^compose
+    }
+
+    lives-ok { Anon }, 'can create a recorder';
+    lives-ok { Named }, 'can create a named recorder';
+    lives-ok { Named.method }, 'can invoke methods';
+
+    is Anon.^name, '<anon record 1>', 'anonymous records generate a name';
+    is Named.^name, 'Named', 'named records have theirs';
+
+    ok Anon.^is_anonymous, 'anonymous records are anonymous';
+    nok Named.^is_anonymous, 'named records are not anonymous';
+
     lives-ok {
-        Record.HOW.set_template: Record, Mu
-    }, 'can set record templates before composition';
+        Named ~~ -> ::Named $named { $named ~~ -> Named { $named } }
+    }, 'records know their identity';
     lives-ok {
-        Record.HOW.set_delegate: Record, role { }
-    }, 'can set record delegates before composition';
-    lives-ok {
-        Record.HOW.set_fields: Record
-    }, 'can set record fields before composition';
-    lives-ok {
-        Record.HOW.set_parameters: Record
-    }, 'can set record parameters before composition';
-    lives-ok {
-        Record.HOW.compose: Record
-    }, 'can compose record types';
-    throws-like {
-        Record.HOW.set_template: Record, Mu
-    }, X::Data::Record::Composed,
-      'cannot set record templates after composition';
-    throws-like {
-        Record.HOW.set_delegate: Record, role { }
-    }, X::Data::Record::Composed,
-      'cannot set record delegates after composition';
-    throws-like {
-        Record.HOW.set_fields: Record
-    }, X::Data::Record::Composed,
-      'cannot set record fields after composition';
-    throws-like {
-        Record.HOW.set_parameters: Record
-    }, X::Data::Record::Composed,
-      'cannot set record parameters after composition';
+        Named ~~ -> Instance { }
+    }, 'records can delegate typechecks';
 };
 
 subtest 'MetamodelX::RecordTemplateHOW', {
-    plan 9;
-
-    my role Data::Record::Mock[+] {
-        method method() { }
-    }
-    my role Data::Record::Mock[+, Bool:D :$param!] {
-        method method() { }
-    }
+    plan 8;
 
     my &body_block := { $_ };
-    sub term:<RecordTemplate> {
-        once MetamodelX::RecordTemplateHOW.new_type:
-            Data::Record::Mock, &body_block, :name<Record>, :param
+
+    only term:<RecordTemplate> {
+        once MetamodelX::RecordTemplateHOW[Recorder].new_type(&body_block, :name<Record>).^compose
     }
+    only term:<Record> {
+        once RecordTemplate.^parameterize(1)
+    }
+
     lives-ok { RecordTemplate }, 'can create new record template types';
-
-    ok RecordTemplate.HOW.find_method(RecordTemplate, 'method'),
-      'can find methods on record templates, which are those of their delegate';
-
-    sub term:<Record> { once RecordTemplate.^parameterize: 1 }
+    lives-ok { RecordTemplate.method }, 'can invoke methods on record template types';
     lives-ok { Record }, 'can parameterize record template types';
 
     cmp-ok Record.^template, &[=:=], RecordTemplate,
@@ -73,8 +60,6 @@ subtest 'MetamodelX::RecordTemplateHOW', {
       'parameterizations have the correct delegate';
     cmp-ok Record.^fields, &[eqv], (1,),
       'parameterizations have the correct fields';
-    cmp-ok Record.^parameters, &[eqv], Map.new((:param)),
-      'parameterizations have the correct parameters';
 
     ok Metamodel::Primitives.is_type(Record, RecordTemplate),
       'parameterizations typecheck as their template';
@@ -82,4 +67,4 @@ subtest 'MetamodelX::RecordTemplateHOW', {
       'parameterizations typecheck as their delegate';
 };
 
-# vim: ft=perl6 sw=4 ts=4 sts=4 et
+# vim: ft=raku sw=4 ts=4 sts=4 et

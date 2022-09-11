@@ -1,101 +1,103 @@
 use v6.d;
+use annotations::containers;
+use annotations::how;
 use MetamodelX::RecordHOW;
-unit class MetamodelX::RecordTemplateHOW does Metamodel::Naming;
+my atomicint $ID = 1;
+unit role MetamodelX::RecordTemplateHOW[MetamodelX::RecordHOW ::P]
+     does MetamodelX::AnnotationHOW[Buffer, Metamodel::ClassHOW];
 
-has Mu      $!delegate   is required;
-has Block:D $!body_block is required;
-has         %!parameters is required;
+my \F = P.for;
+my \D = P.delegate;
 
-has Metamodel::Archetypes:D $!archetypes is required;
+#|[ The type of field. ]
+method for(::?ROLE:_: Mu $?) { F }
 
-submethod BUILD(::?CLASS:D: Mu :$delegate! is raw, Block:D :$body_block! is raw, :%parameters! --> Nil) {
-    $!delegate   := $delegate.^parameterize: |%parameters;
-    $!body_block := $body_block;
-    %!parameters := %parameters.Map;
+#|[ A class to which to delegate method calls. ]
+method delegate(::?ROLE:_: Mu $?) { D }
 
-    my Metamodel::Archetypes:D constant N-ARCHETYPES .= new: :1nominal, :1parametric;
-    my Metamodel::Archetypes:D constant G-ARCHETYPES .= new: :1nominal, :1parametric, :1generic;
-    $!archetypes := $delegate.HOW.archetypes.generic || $body_block.is_generic
-                 ?? G-ARCHETYPES
-                 !! N-ARCHETYPES;
+#|[ A HOW with which to produce a record type. ]
+method recorder(::?ROLE:_: Mu $?) { P }
+
+my constant N-ARCHETYPES = Metamodel::Archetypes.new: :nominal, :parametric, :inheritable, :augmentable;
+my constant G-ARCHETYPES = Metamodel::Archetypes.new: :nominal, :parametric, :generic, :inheritable, :augmentable;
+
+proto method archetypes(::?ROLE:_: $? --> Metamodel::Archetypes:D) {*}
+multi method archetypes(::?ROLE:U: $? --> N-ARCHETYPES) { }
+multi method archetypes(::?ROLE:D: $?) {
+    self.ANN[0]<>
 }
 
-method new_type(::?CLASS:_: Mu $delegate is raw, Block:D $body_block is raw, Str:_ :$name, *%parameters --> Mu) {
-    our Str:D constant ANON_NAME = '<anon record>';
-
-    my ::?CLASS:D $meta := self.bless: :$delegate, :$body_block, :%parameters;
-    my Mu         $obj  := Metamodel::Primitives.create_type: $meta, 'Uninstantiable';
-    $meta.set_name: $obj, $name // ANON_NAME;
-    Metamodel::Primitives.configure_type_checking: $obj, (), :!authoritative, :call_accepts;
+method new_type(::?ROLE:_: Block:D $body_block is raw, Str :$name, *%rest) {
+    my uint $id = !$name.DEFINITE && $ID⚛++;
+    my $obj := callwith :name($id ?? "<anon record template $id>" !! $name), |%rest;
+    my $how := $obj.HOW;
+    my $archetypes := P.archetypes.generic || $body_block.is_generic ?? G-ARCHETYPES !! N-ARCHETYPES;
+    $how.ANN = $archetypes, $id, $body_block;
+    $how.add_parent: $obj, D;
     Metamodel::Primitives.set_parameterizer($obj, &RECORD-PARAMETERIZER);
     $obj
 }
-sub RECORD-PARAMETERIZER(Mu $obj is raw, @args --> Mu) {
-    $obj.HOW!do_parameterization: $obj, @args
-}
-method !do_parameterization(Mu $obj is raw, (@pos, %named) --> Mu) {
-    my       $fields := $!body_block.(|@pos, |%named);
-    my Str:D $name    = self.name: $obj;
-    $name ~= [~] '[',
-                 @pos.map(*.raku).join(', '),
-                 (do ', ' if ?@pos && ?%named),
-                 %named.map(*.raku).join(', '),
-                 ']';
 
-    my Mu $record := MetamodelX::RecordHOW.new_type: :$name;
-    $record.^set_language_version;
-    $record.^set_template: $obj;
-    $record.^set_delegate: $!delegate;
-    $record.^set_fields: $fields;
-    $record.^set_parameters: |%!parameters;
-    $record.^add_role: $!delegate;
-    $record.^compose
-}
-
-method archetypes(::?CLASS:D: --> Metamodel::Archetypes:D) { $!archetypes }
-
-method delegate(::?CLASS:D: Mu --> Mu) { $!delegate }
-
-method body_block(::?CLASS:D: Mu --> Block:D) { $!body_block }
-
-method parameters(::?CLASS:D: Mu --> Map:D) { %!parameters }
-
-method parameterize(::?CLASS:D: Mu $obj is raw, |args --> Mu) {
+#|[ Ensures that an MRO-based type_check not be called. ]
+method publish_type_cache(::?ROLE:D: Mu $obj is raw) is raw {
     use nqp;
-    my Mu $pos := nqp::list();
-    nqp::push($pos, $_) for @(args);
-    my Mu $named := nqp::hash();
-    nqp::bindkey($named, nqp::unbox_s(.key), .value) for %(args);
-    nqp::parameterizetype($obj, nqp::list($pos, $named))
+    my $result := callsame;
+    nqp::settypecheckmode($obj.WHAT,
+      nqp::const::TYPE_CHECK_CACHE_DEFINITIVE);
+    $result
 }
 
-method is_generic(::?CLASS:D: Mu --> int) {
-    return 1 if $!delegate.HOW.archetypes.generic;
-    return 1 if $!body_block.is_generic;
-    0
+#|[ A number of annotations we promise to keep via this specific parametric HOW. ]
+method higher_annotations(::?ROLE:_: $? --> 3) { }
+#=[ This is separate from MetamodelX::RecordHOW's annotations because those
+    types have the delegate as a parent ordinarily. ]
+
+#|[ A position for a list of higher annotations for this metaobject. ]
+method higher_annotation_offset(::?ROLE:_: Mu $obj? is raw --> Int:D) {
+    self.*higher_annotations($obj).skip.sum
+}
+#=[ Depending on this in a subtype requires a higher annotations offset to
+    skip. ]
+
+#|[ A block accepting type arguments, returning a record type's fields. ]
+method body_block(::?ROLE:D: Mu $obj is raw --> Block:D) {
+    self.ANN[2]<>
+}
+#=[ Completes the record template, allowing it to produce a true record type. ] 
+
+#|[ An ID given to anonymous record templates. ]
+method anonymous_id(::?ROLE:D: Mu $obj is raw --> uint) {
+    self.ANN[1]<>
 }
 
-method instantiate_generic(::?CLASS:D: Mu $obj is raw, Mu $type_env is raw --> Mu) {
-    my Str:D    $name        = self.name: $obj;
-    my Mu       $delegate   := $!delegate;
-    my Block:D  $body_block := $!body_block;
-    $delegate   := $delegate.^instantiate_generic: $type_env if $delegate.^is_generic;
+#|[ Whether or not this is an anonymous record template. ]
+method is_anonymous(::?ROLE:D: Mu $obj is raw --> Bool:D) {
+    ?self.anonymous_id: $obj
+}
+
+method parameterize(::?ROLE:D: Mu $obj is raw, |args) is raw {
+    my $encoded := IterationBuffer.new;
+    $encoded.push: %(args) || my constant EMPTY = Map.new;
+    $encoded.push: $_ for @(args);
+    Metamodel::Primitives.parameterize_type: $obj, $encoded.List
+}
+sub RECORD-PARAMETERIZER(Mu $obj is raw, @encoded) is raw {
+    $obj.HOW!do_parameterization: $obj, @encoded
+}
+method !do_parameterization(Mu $template is raw, @encoded) is raw {
+    my $args := Capture.new: :list(@encoded.skip), :hash(@encoded.head);
+    my $name := self.name($template) ~ '[' ~ @$args.map(*.raku).join(', ') ~ ']';
+    my $obj  := P.new_type: self.body_block($template)(|$args), $template, :$name;
+    my $how  := $obj.HOW;
+    $how.ANN = self.ANN.skip: self.*higher_annotations($template).sum;
+    $how.compose: $obj
+}
+
+method instantiate_generic(::?ROLE:D: Mu $obj is raw, Mu $type_env is raw) {
+    my $name       := self.name: $obj;
+    my $delegate   := D;
+    my $body_block := self.body_block: $obj;
+    $delegate   := $delegate.^instantiate_generic: $type_env if $delegate.HOW.archetypes.generic;
     $body_block := $body_block.instantiate_generic: $type_env if $body_block.is_generic;
-    self.new_type: $delegate, $body_block, :$name, |%!parameters
-}
-
-method find_method(::?CLASS:D: Mu, |args --> Mu) { $!delegate.^find_method: |args }
-
-method methods(::?CLASS:D: Mu, |args --> Mu) { $!delegate.^methods: |args }
-
-method accepts_type(::?CLASS:D: Mu $checkee is raw, Mu $checker is raw --> int) {
-    my Mu $checkee-d := $checkee<>;
-    my Mu $checker-d := $checker<>;
-    # Are the LHS and RHS identical?
-    return 1 if $checker-d =:= $checkee-d;
-    # Is the RHS a parameterization of the LHS?
-    return 1 if Metamodel::Primitives.is_type($checker-d.HOW, MetamodelX::RecordHOW)
-             && $checker-d.^template =:= $checkee-d;
-    # Fail the typecheck.
-    0
+    self.new_type: $delegate, $body_block, :$name
 }

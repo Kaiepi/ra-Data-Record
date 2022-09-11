@@ -45,14 +45,14 @@ subtest 'records', {
         items => [@ <@ Int:D, Str:D @> @]
     @} :name('Schema');
 
-    my %data =
-        name => 'Kaiepi',
+    my %data is Map =
+        name  => 'Kaiepi',
         items => ((1,'First!!!111!1!one'),);
 
     lives-ok {
         my % := {
            name  => %data<name>,
-           items => (|%data<items>, (2,))
+           items => %data<items>,
         } (<<) Schema;
     }, 'can instantiate a record type with a consumed record';
     lives-ok {
