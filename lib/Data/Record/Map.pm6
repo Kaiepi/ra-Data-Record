@@ -62,9 +62,9 @@ method fields(::?CLASS:_: --> Map:D) { self.^fields }
 method structural(::?CLASS:_: --> Bool:D) { self.^structural }
 
 do { # hide this sub
-    proto sub unrecord(Mu \key, Mu --> Pair:D)                 { (key) => {*} }
-    multi sub unrecord(Mu, Data::Record::Instance:D \recorded) { recorded.unrecord }
-    multi sub unrecord(Mu, Mu \value) is raw                   { value }
+    proto unrecord(Mu \key, Mu --> Pair:D)                 { (key) => {*} }
+    multi unrecord(Mu, Data::Record::Instance:D \recorded) { recorded.unrecord }
+    multi unrecord(Mu, Mu \value) is raw                   { value }
 
     method unrecord(::?CLASS:D: --> Map:D) {
         %!record.new: %!record.kv.map: &unrecord
@@ -327,7 +327,7 @@ my class MapIterator does PredictiveIterator {
     }
 }
 
-multi sub circumfix:<{@ @}>(Map:D $fields, Str:_ :$name, Bool:D :$structural = False) is export {
+multi circumfix:<{@ @}>(Map:D $fields, Str:_ :$name, Bool:D :$structural = False) is export {
     my $obj := MetamodelX::RecordHOW[
         Map:D, Data::Record::Map
     ].new_type: $fields<>, :$name;
@@ -335,7 +335,7 @@ multi sub circumfix:<{@ @}>(Map:D $fields, Str:_ :$name, Bool:D :$structural = F
     $how.yield_annotations($obj) = $structural;
     $how.compose: $obj
 }
-multi sub circumfix:<{@ @}>(*@pairs, Str:_ :$name, Bool:D :$structural = False) is export {
+multi circumfix:<{@ @}>(*@pairs, Str:_ :$name, Bool:D :$structural = False) is export {
     my $obj := MetamodelX::RecordHOW[
         Map:D, Data::Record::Map
     ].new_type: Map.new(@pairs), :$name;
@@ -343,7 +343,7 @@ multi sub circumfix:<{@ @}>(*@pairs, Str:_ :$name, Bool:D :$structural = False) 
     $how.yield_annotations($obj) = $structural;
     $how.compose: $obj
 }
-multi sub circumfix:<{@ @}>(Block:D $block, Str:_ :$name, Bool:D :$structural = False) is export {
+multi circumfix:<{@ @}>(Block:D $block, Str:_ :$name, Bool:D :$structural = False) is export {
     my $obj := MetamodelX::RecordTemplateHOW[
         MetamodelX::RecordHOW[Map:D, Data::Record::Map]
     ].new_type: $block, :$name;
@@ -352,64 +352,64 @@ multi sub circumfix:<{@ @}>(Block:D $block, Str:_ :$name, Bool:D :$structural = 
     $how.compose: $obj
 }
 
-multi sub infix:«(><)»(Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
+multi infix:«(><)»(Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
     $rhs.new: $lhs
 }
-multi sub infix:«(><)»(Data::Record::Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
+multi infix:«(><)»(Data::Record::Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
     $rhs.new: $lhs.record
 }
-multi sub infix:«(><)»(Data::Record::Map:U $lhs is raw, Map:D $rhs is raw --> Data::Record::Map:D) is export {
+multi infix:«(><)»(Data::Record::Map:U $lhs is raw, Map:D $rhs is raw --> Data::Record::Map:D) is export {
     $lhs.new: $rhs
 }
-multi sub infix:«(><)»(Data::Record::Map:U $lhs is raw, Data::Record::Map:D $rhs is raw --> Data::Record::Map:D) is export {
+multi infix:«(><)»(Data::Record::Map:U $lhs is raw, Data::Record::Map:D $rhs is raw --> Data::Record::Map:D) is export {
     $lhs.new: $rhs.record
 }
 
-multi sub infix:«(<<)»(Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
+multi infix:«(<<)»(Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
     $rhs.new: $lhs, :consume
 }
-multi sub infix:«(<<)»(Data::Record::Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
+multi infix:«(<<)»(Data::Record::Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
     $rhs.new: $lhs.record, :consume
 }
-multi sub infix:«(<<)»(Data::Record::Map:U $lhs is raw, Map:D $rhs is raw --> Data::Record::Map:D) is export {
+multi infix:«(<<)»(Data::Record::Map:U $lhs is raw, Map:D $rhs is raw --> Data::Record::Map:D) is export {
     $lhs.new: $rhs, :subsume
 }
-multi sub infix:«(<<)»(Data::Record::Map:U $lhs is raw, Data::Record::Map:D $rhs is raw --> Data::Record::Map:D) is export {
+multi infix:«(<<)»(Data::Record::Map:U $lhs is raw, Data::Record::Map:D $rhs is raw --> Data::Record::Map:D) is export {
     $lhs.new: $rhs.record, :subsume
 }
 
-multi sub infix:«(>>)»(Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
+multi infix:«(>>)»(Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
     $rhs.new: $lhs, :subsume
 }
-multi sub infix:«(>>)»(Data::Record::Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
+multi infix:«(>>)»(Data::Record::Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
     $rhs.new: $lhs.record, :subsume
 }
-multi sub infix:«(>>)»(Data::Record::Map:U $lhs is raw, Map:D $rhs is raw --> Data::Record::Map:D) is export {
+multi infix:«(>>)»(Data::Record::Map:U $lhs is raw, Map:D $rhs is raw --> Data::Record::Map:D) is export {
     $lhs.new: $rhs, :consume
 }
-multi sub infix:«(>>)»(Data::Record::Map:U $lhs is raw, Data::Record::Map:D $rhs is raw --> Data::Record::Map:D) is export {
+multi infix:«(>>)»(Data::Record::Map:U $lhs is raw, Data::Record::Map:D $rhs is raw --> Data::Record::Map:D) is export {
     $lhs.new: $rhs.record, :consume
 }
 
-multi sub infix:«(<>)»(Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
+multi infix:«(<>)»(Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
     $rhs.new: $lhs, :coerce
 }
-multi sub infix:«(<>)»(Data::Record::Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
+multi infix:«(<>)»(Data::Record::Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
     $rhs.new: $lhs.record, :coerce
 }
-multi sub infix:«(<>)»(Data::Record::Map:U $lhs is raw, Map:D $rhs is raw --> Data::Record::Map:D) is export {
+multi infix:«(<>)»(Data::Record::Map:U $lhs is raw, Map:D $rhs is raw --> Data::Record::Map:D) is export {
     $lhs.new: $rhs, :coerce
 }
-multi sub infix:«(<>)»(Data::Record::Map:U $lhs is raw, Data::Record::Map:D $rhs is raw --> Data::Record::Map:D) is export {
+multi infix:«(<>)»(Data::Record::Map:U $lhs is raw, Data::Record::Map:D $rhs is raw --> Data::Record::Map:D) is export {
     $lhs.new: $rhs.record, :coerce
 }
 
-multi sub infix:<eqv>(Map:D $lhs is raw, Data::Record::Map:D $rhs is raw --> Bool:D) is export {
+multi infix:<eqv>(Map:D $lhs is raw, Data::Record::Map:D $rhs is raw --> Bool:D) is export {
     $lhs eqv $rhs.unrecord
 }
-multi sub infix:<eqv>(Data::Record::Map:D $lhs is raw, Map:D $rhs is raw --> Bool:D) is export {
+multi infix:<eqv>(Data::Record::Map:D $lhs is raw, Map:D $rhs is raw --> Bool:D) is export {
     $lhs.unrecord eqv $rhs
 }
-multi sub infix:<eqv>(Data::Record::Map:D $lhs is raw, Data::Record::Map:D $rhs is raw --> Bool:D) is export {
+multi infix:<eqv>(Data::Record::Map:D $lhs is raw, Data::Record::Map:D $rhs is raw --> Bool:D) is export {
     $lhs.unrecord eqv $rhs.unrecord
 }

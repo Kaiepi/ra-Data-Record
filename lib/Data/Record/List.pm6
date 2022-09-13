@@ -64,9 +64,9 @@ method fields(::?CLASS:_: --> List:D) { self.^fields }
 method record(::?CLASS:D: --> List:D) { @!record }
 
 do { # hide this sub
-    proto sub unrecord(Mu) is raw                          {*}
-    multi sub unrecord(Data::Record::Instance:D \recorded) { recorded.unrecord }
-    multi sub unrecord(Mu \value)                          { value }
+    proto unrecord(Mu) is raw                          {*}
+    multi unrecord(Data::Record::Instance:D \recorded) { recorded.unrecord }
+    multi unrecord(Mu \value)                          { value }
 
     method unrecord(::?CLASS:D: --> List:D) {
         @!record.WHAT.from-iterator: @!record.map(&unrecord).iterator
@@ -81,7 +81,7 @@ multi method raku(::?CLASS:U: --> Str:D) {
 }
 
 do {
-    sub ACCEPTS(Mu \a, Mu \b) is hidden-from-backtrace { a.ACCEPTS: b }
+    only ACCEPTS(Mu \a, Mu \b) is hidden-from-backtrace { a.ACCEPTS: b }
 
     multi method ACCEPTS(::?CLASS:U: List:D \topic) {
         my @fields  := self.^fields;
@@ -397,14 +397,14 @@ my class ArrayIterator is ListIterator {
     relevant iterator of our record, so we have some way to check the
     list's arity without using the elems method. ]
 
-multi sub circumfix:<[@ @]>(+@fields is raw, Str :$name --> Mu) is export {
+multi circumfix:<[@ @]>(+@fields is raw, Str :$name --> Mu) is export {
     my $obj := MetamodelX::RecordHOW[
         List:D, Data::Record::List
     ].new_type: @fields, :$name;
     my $how := $obj.HOW;
     $how.compose: $obj
 }
-multi sub circumfix:<[@ @]>(Block:D $block is raw, Str :$name --> Mu) is export {
+multi circumfix:<[@ @]>(Block:D $block is raw, Str :$name --> Mu) is export {
     my $obj := MetamodelX::RecordTemplateHOW[
         MetamodelX::RecordHOW[List:D, Data::Record::List]
     ].new_type: $block, :$name;
@@ -412,64 +412,64 @@ multi sub circumfix:<[@ @]>(Block:D $block is raw, Str :$name --> Mu) is export 
     $how.compose: $obj
 }
 
-multi sub infix:«(><)»(List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
+multi infix:«(><)»(List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
     $rhs.new: $lhs
 }
-multi sub infix:«(><)»(Data::Record::List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
+multi infix:«(><)»(Data::Record::List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
     $rhs.new: $lhs.record
 }
-multi sub infix:«(><)»(Data::Record::List:U $lhs is raw, List:D $rhs is raw --> Data::Record::List:D) is export {
+multi infix:«(><)»(Data::Record::List:U $lhs is raw, List:D $rhs is raw --> Data::Record::List:D) is export {
     $lhs.new: $rhs
 }
-multi sub infix:«(><)»(Data::Record::List:U $lhs is raw, Data::Record::List:D $rhs is raw --> Data::Record::List:D) is export {
+multi infix:«(><)»(Data::Record::List:U $lhs is raw, Data::Record::List:D $rhs is raw --> Data::Record::List:D) is export {
     $lhs.new: $rhs.record
 }
 
-multi sub infix:«(<<)»(List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
+multi infix:«(<<)»(List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
     $rhs.new: $lhs, :consume
 }
-multi sub infix:«(<<)»(Data::Record::List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
+multi infix:«(<<)»(Data::Record::List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
     $rhs.new: $lhs.record, :consume
 }
-multi sub infix:«(<<)»(Data::Record::List:U $lhs is raw, List:D $rhs is raw --> Data::Record::List:D) is export {
+multi infix:«(<<)»(Data::Record::List:U $lhs is raw, List:D $rhs is raw --> Data::Record::List:D) is export {
     $lhs.new: $rhs, :subsume
 }
-multi sub infix:«(<<)»(Data::Record::List:U $lhs is raw, Data::Record::List:D $rhs is raw --> Data::Record::List:D) is export {
+multi infix:«(<<)»(Data::Record::List:U $lhs is raw, Data::Record::List:D $rhs is raw --> Data::Record::List:D) is export {
     $lhs.new: $rhs.record, :subsume
 }
 
-multi sub infix:«(>>)»(List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
+multi infix:«(>>)»(List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
     $rhs.new: $lhs, :subsume
 }
-multi sub infix:«(>>)»(Data::Record::List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
+multi infix:«(>>)»(Data::Record::List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
     $rhs.new: $lhs.record, :subsume
 }
-multi sub infix:«(>>)»(Data::Record::List:U $lhs is raw, List:D $rhs is raw --> Data::Record::List:D) is export {
+multi infix:«(>>)»(Data::Record::List:U $lhs is raw, List:D $rhs is raw --> Data::Record::List:D) is export {
     $lhs.new: $rhs, :consume
 }
-multi sub infix:«(>>)»(Data::Record::List:U $lhs is raw, Data::Record::List:D $rhs is raw --> Data::Record::List:D) is export {
+multi infix:«(>>)»(Data::Record::List:U $lhs is raw, Data::Record::List:D $rhs is raw --> Data::Record::List:D) is export {
     $lhs.new: $rhs.record, :consume
 }
 
-multi sub infix:«(<>)»(List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
+multi infix:«(<>)»(List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
     $rhs.new: $lhs, :coerce
 }
-multi sub infix:«(<>)»(Data::Record::List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
+multi infix:«(<>)»(Data::Record::List:D $lhs is raw, Data::Record::List:U $rhs is raw --> Data::Record::List:D) is export {
     $rhs.new: $lhs.record, :coerce
 }
-multi sub infix:«(<>)»(Data::Record::List:U $lhs is raw, List:D $rhs is raw --> Data::Record::List:D) is export {
+multi infix:«(<>)»(Data::Record::List:U $lhs is raw, List:D $rhs is raw --> Data::Record::List:D) is export {
     $lhs.new: $rhs, :coerce
 }
-multi sub infix:«(<>)»(Data::Record::List:U $lhs is raw, Data::Record::List:D $rhs is raw --> Data::Record::List:D) is export {
+multi infix:«(<>)»(Data::Record::List:U $lhs is raw, Data::Record::List:D $rhs is raw --> Data::Record::List:D) is export {
     $lhs.new: $rhs.record, :coerce
 }
 
-multi sub infix:<eqv>(List:D $lhs is raw, Data::Record::List:D $rhs is raw --> Bool:D) is export {
+multi infix:<eqv>(List:D $lhs is raw, Data::Record::List:D $rhs is raw --> Bool:D) is export {
     $lhs eqv $rhs.unrecord
 }
-multi sub infix:<eqv>(Data::Record::List:D $lhs is raw, List:D $rhs is raw --> Bool:D) is export {
+multi infix:<eqv>(Data::Record::List:D $lhs is raw, List:D $rhs is raw --> Bool:D) is export {
     $lhs.unrecord eqv $rhs
 }
-multi sub infix:<eqv>(Data::Record::List:D $lhs is raw, Data::Record::List:D $rhs is raw --> Bool:D) is export {
+multi infix:<eqv>(Data::Record::List:D $lhs is raw, Data::Record::List:D $rhs is raw --> Bool:D) is export {
     $lhs.unrecord eqv $rhs.unrecord
 }
