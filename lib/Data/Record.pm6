@@ -1,13 +1,19 @@
 use v6.d;
-use Data::Record::Operators;
 use Data::Record::Exceptions;
 use Data::Record::Instance;
+use Data::Record::Operators;
 use Data::Record::Tuple;
 use Data::Record::List;
 use Data::Record::Map;
-sub EXPORT(--> Map:D) {
+only EXPORT(--> Map:D) {
     Map.new:
+        '&circumfix:«<@ @>»' => &circumfix:«<@ @>»,
+        '&circumfix:<{@ @}>' => &circumfix:<{@ @}>,
+        '&circumfix:<[@ @]>' => &circumfix:<[@ @]>,
+        '&infix:«(><)»' => &infix:«(><)»,
+        '&infix:«(<<)»' => &infix:«(<<)»,
+        '&infix:«(>>)»' => &infix:«(>>)»,
+        '&infix:«(<>)»' => &infix:«(<>)»,
         '&infix:<eqv>' => &infix:<eqv>,
-        |Data::Record::Operators::EXPORT::DEFAULT.WHO.keys.map({ $_ => ::($_) })
 }
 unit module Data::Record:auth<zef:Kaiepi>:ver<1.0.2>:api<2>;

@@ -35,7 +35,7 @@ class Data::Record::Lifter does Callable is repr<Uninstantiable> {
     proto method CALL-ME(Mu, Mu) is raw {*}
     multi method CALL-ME(I \a, I \b;; :$mode!) {
         CX::Rest.new(a, b).throw unless a.DEFINITE;
-        Metamodel::Primitives.is_type(a, b) ?? a !! b.new(a.unrecord, :$mode)
+        Metamodel::Primitives.is_type(a, b) ?? a !! b.new(a.record, :$mode)
     }
     multi method CALL-ME(Mu \a, I \b;; :$mode!) {
         CX::Rest.new(a, b).throw unless Metamodel::Primitives.is_type(a, b.^for);
