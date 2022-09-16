@@ -1,4 +1,4 @@
-use v6.d;
+use v6.e.PREVIEW;
 use MetamodelX::RecordHOW;
 use MetamodelX::RecordTemplateHOW;
 use Data::Record::Mode;

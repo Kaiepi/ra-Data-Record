@@ -1,4 +1,4 @@
-use v6.d;
+use v6.e.PREVIEW;
 use Data::Record::Exceptions;
 use Data::Record::Instance;
 use Data::Record::Operators;

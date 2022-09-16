@@ -1,4 +1,4 @@
-use v6.d;
+use v6.e.PREVIEW;
 use annotations::containers;
 use annotations::how;
 my atomicint $ID = 1;

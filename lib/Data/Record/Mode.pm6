@@ -1,4 +1,4 @@
-use v6.d;
+use v6.e.PREVIEW;
 #|[ A mode of coercion. ]
 unit enum Data::Record::Mode <wrap consume subsume coerce>;
 
