@@ -325,17 +325,9 @@ my class ListIterator does Iterator {
         the arity of the list does not match that of the record, it will be
         considered to have missing fields and thus an exception will be thrown. ]
     method consume(::?CLASS:D:) is raw {
-        my $key;
-        my $field;
+        my $key := $!key++;
+        my $field := $!fields.pull-one;
         loop {
-            # 1st pass - scan for an existent field.
-            CONTROL { last when CX::Rest }
-            return-rw $!type.^map_it_field:
-                ($key := $!key++), ($field := $!fields.pull-one), $!values.pull-one,
-                :$!mode, :drop<again>, :keep<missing>;
-        }
-        loop {
-            # 2nd pass - scan for an existent value.
             CONTROL { next when CX::Rest }
             return-rw $!type.^map_it_field:
                 $key, $field, $!values.pull-one,
@@ -359,17 +351,9 @@ my class ListIterator does Iterator {
         be stubbed (if possible).  This should only throw if a definite field
         is missing. ]
     method coerce(::?CLASS:D:) is raw {
-        my $key;
-        my $field;
+        my $key := $!key++;
+        my $field := $!fields.pull-one;
         loop {
-            # 1st pass - scan for an existent field.
-            CONTROL { last when CX::Rest }
-            return-rw $!type.^map_it_field:
-                ($key := $!key++), ($field := $!fields.pull-one), $!values.pull-one,
-                :$!mode, :drop<again>, :keep<coercing>;
-        }
-        loop {
-            # 2nd pass - scan for an existent value.
             CONTROL { next when CX::Rest }
             return-rw $!type.^map_it_field:
                 $key, $field, $!values.pull-one,
