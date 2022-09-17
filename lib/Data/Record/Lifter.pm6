@@ -12,8 +12,14 @@ class CX::Rest does X::Control {
     #|[ The record field in a record typecheck. ]
     has $.field is built(:bind) is required;
 
-    method new(::?CLASS:_: Mu $value is raw, Mu $field is raw) {
-        self.bless: :$value, :$field
+    my @POOL := cache $?CLASS.CREATE xx *;
+    submethod new(::?CLASS:_: Mu $value is raw, Mu $field is raw) {
+        use nqp;
+        my $self := @POOL.AT-POS: nqp::threadid(nqp::currentthread());
+        nqp::bindattr($self, $?CLASS, '$!value', $value);
+        nqp::bindattr($self, $?CLASS, '$!field', $field);
+        $self.reset-backtrace;
+        $self
     }
 
     #|[ Fails a record typecheck by throwing X::Data::Record::TypeCheck. ]
