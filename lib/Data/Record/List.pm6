@@ -117,6 +117,22 @@ method DELETE-POS(::?CLASS:D: $pos --> Mu) is raw {
     self.^map_field: $pos, $!record.AT-POS: $pos
 }
 
+method name(::?CLASS:D:) is raw {
+    $!record.name
+}
+
+method of(::?CLASS:D:) is raw {
+    $!record.of
+}
+
+method default(::?CLASS:D:) is raw {
+    $!record.default
+}
+
+method dynamic(::?CLASS:D:) is raw {
+    $!record.dynamic
+}
+
 method push(::THIS ::?CLASS:D: **@values is raw --> ::?CLASS:D) {
     $!record.push: Slip.from-iterator: ArrayIterator.new: THIS, WRAP, 'push', @values;
     self

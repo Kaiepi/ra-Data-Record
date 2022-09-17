@@ -115,6 +115,26 @@ method DELETE-KEY(::THIS ::?CLASS:D: $key is raw) {
     self.^map_field: $key, $!record.AT-KEY: $key
 }
 
+method name(::?CLASS:D:) is raw {
+    $!record.name
+}
+
+method of(::?CLASS:D:) is raw {
+    $!record.of
+}
+
+method keyof(::?CLASS:D:) is raw {
+    $!record.keyof
+}
+
+method default(::?CLASS:D:) is raw {
+    $!record.default
+}
+
+method dynamic(::?CLASS:D:) is raw {
+    $!record.dynamic
+}
+
 method push(::THIS ::?CLASS:D: +@values is raw --> ::?CLASS:D) {
     MapIterator.new(THIS, 'bounded', WRAP, 'push', let $!record .= push: @values).sink-all;
     self

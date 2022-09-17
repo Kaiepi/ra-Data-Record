@@ -115,6 +115,22 @@ method DELETE-POS(::?CLASS:D: Mu $pos --> Nil) is raw {
     self.^map_field: $pos, $!record.AT-POS: $pos
 }
 
+method name(::?CLASS:D:) is raw {
+    $!record.name
+}
+
+method of(::?CLASS:D:) is raw {
+    $!record.of
+}
+
+method default(::?CLASS:D:) is raw {
+    $!record.default
+}
+
+method dynamic(::?CLASS:D:) is raw {
+    $!record.dynamic
+}
+
 method push(::?CLASS:D: | --> Nil)    { self.^enforce_immutability: 'push' }
 method pop(::?CLASS:D: | --> Nil)     { self.^enforce_immutability: 'pop' }
 method shift(::?CLASS:D: | --> Nil)   { self.^enforce_immutability: 'shift' }
