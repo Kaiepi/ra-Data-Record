@@ -96,7 +96,6 @@ method EXISTS-POS(::?CLASS:D: Int:D $pos --> Bool:D) {
 }
 
 method AT-POS(::?CLASS:D: Mu $pos) is raw {
-    die self.^suggest_bounds: $pos unless self.^declares_field: $pos;
     $!record.AT-POS: $pos
 }
 
@@ -111,7 +110,9 @@ method ASSIGN-POS(::?CLASS:D: Mu $pos, Mu $value is raw) is raw {
 }
 
 method DELETE-POS(::?CLASS:D: Mu $pos --> Nil) is raw {
-    self.^enforce_immutability: 'deletion'
+    CONTROL { .flunk: 'deletion' when CX::Rest }
+    (let $!record).DELETE-POS: $pos;
+    self.^map_field: $pos, $!record.AT-POS: $pos
 }
 
 method push(::?CLASS:D: | --> Nil)    { self.^enforce_immutability: 'push' }

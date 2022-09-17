@@ -92,8 +92,11 @@ subtest 'basic', {
     }, X::Data::Record::TypeCheck,
       'cannot bind to positions in a list if the value does not typecheck';
 
-    cmp-ok @list[0]:delete, &[===], 3,
-      'can delete positions in a list';
+    throws-like {
+        @list[0]:delete
+    }, X::Data::Record::TypeCheck,
+      'cannot delete positions if their hole in a tuple does not typecheck';
+    @list := [] (><) IntList;
 
     @list.push: 1;
     cmp-ok @list, &[eqv], [1],

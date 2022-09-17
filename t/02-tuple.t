@@ -7,7 +7,7 @@ use Test;
 plan 4;
 
 subtest 'basic', {
-    plan 45;
+    plan 46;
 
     my Str:D $name = 'IntTuple';
 
@@ -57,7 +57,7 @@ subtest 'basic', {
     }, X::Data::Record::Definite,
       '(>>) throws for underfilled lists if missing values must be definite...';
     lives-ok {
-        () (>>) <@ Int:_ @>
+        (1,) (>>) <@ Int, Str @>
     }, '...but lives otherwise';
     throws-like {
         (1,2,) (>>) IntTuple
@@ -76,7 +76,7 @@ subtest 'basic', {
     }, X::Data::Record::Definite,
       '(<>) throws for underfilled lists if missing values must be definite...';
     lives-ok {
-        () (<>) <@ Int:_ @>
+        (1,) (<>) <@ Int, Str @>
     }, '...but lives otherwise';
     lives-ok {
         (1,2,) (<>) IntTuple
@@ -140,8 +140,12 @@ subtest 'basic', {
       'can get values for positions in a tuple';
     throws-like {
         @tuple[0]:delete
-    }, X::Data::Record::Immutable,
-      'cannot delete positions of a tuple';
+    }, X::Data::Record::TypeCheck,
+      'cannot delete positions of a tuple if their hole in a tuple does not typecheck';
+    throws-like {
+        @tuple[42]:delete
+    }, X::Data::Record::OutOfBounds,
+      'cannot delete positions that are out of bounds for a tuple';
 
     throws-like {
         @tuple.push: 4

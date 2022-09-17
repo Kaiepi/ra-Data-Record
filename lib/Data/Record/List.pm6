@@ -112,11 +112,9 @@ method ASSIGN-POS(::?CLASS:D: $pos, Mu $value is raw --> Mu) is raw {
 }
 
 method DELETE-POS(::?CLASS:D: $pos --> Mu) is raw {
-    # XXX: This should be typechecking for the definiteness of the field
-    # this position corresponds to and ensuring that, if this will leave
-    # an empty space in the record, the field is not definite; however,
-    # array slices complicate things.
-    $!record.DELETE-POS: $pos
+    CONTROL { .flunk: 'deletion' when CX::Rest }
+    (let $!record).DELETE-POS: $pos;
+    self.^map_field: $pos, $!record.AT-POS: $pos
 }
 
 method push(::THIS ::?CLASS:D: **@values is raw --> ::?CLASS:D) {

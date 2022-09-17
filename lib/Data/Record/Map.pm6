@@ -96,8 +96,7 @@ method EXISTS-KEY(::?CLASS:D: $key is raw --> Bool:D) {
 }
 
 method AT-KEY(::THIS ::?CLASS:D: $key is raw) is raw {
-    CONTROL { .flunk: 'lookup' when CX::Rest }
-    self.^map_field: $key, $!record.AT-KEY: $key
+    $!record.AT-KEY: $key
 }
 
 method BIND-KEY(::THIS ::?CLASS:D: $key is raw, Mu $value is raw) is raw {
@@ -111,13 +110,9 @@ method ASSIGN-KEY(::THIS ::?CLASS:D: $key is raw, Mu $value is raw) is raw {
 }
 
 method DELETE-KEY(::THIS ::?CLASS:D: $key is raw) {
-    # TODO: Maybe it's OK to delete a field if indefinite.
-    X::Data::Record::Immutable.new(
-        operation => 'deletion',
-        type      => THIS,
-    ).throw if self.^fields.EXISTS-KEY: $key;
     CONTROL { .flunk: 'deletion' when CX::Rest }
-    self.^map_field: $key, (let $!record).DELETE-KEY: $key
+    (let $!record).DELETE-KEY: $key;
+    self.^map_field: $key, $!record.AT-KEY: $key
 }
 
 method push(::THIS ::?CLASS:D: +@values is raw --> ::?CLASS:D) {
