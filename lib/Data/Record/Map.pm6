@@ -1,4 +1,4 @@
-use v6.d;
+use v6.e.PREVIEW;
 use MetamodelX::RecordHOW;
 use MetamodelX::RecordTemplateHOW;
 use Data::Record::Mode;
@@ -9,52 +9,56 @@ unit class Data::Record::Map does Data::Record::Instance[Map:D] does Iterable do
 
 my class MapIterator { ... }
 
-has %.record is required;
+has $.record is built(:bind) is default(anon class Phantom is Nil {
+    submethod FALLBACK(|) {
+        fail new X::Attribute::Required :
+            :name<$!record>,
+            :why('a record must enforce its type')
+    }
+});
 
-submethod BUILD(::?CLASS:D: :%record is raw --> Nil) {
-    %!record := %record;
+multi method new(::?CLASS:_:) {
+    self.CREATE
 }
-
-multi method new(::?CLASS:_: Map:D $original is raw, Bool:D :wrap($)! where ?* --> ::?CLASS:D) {
-    my %record := self.wrap: $original;
-    self.bless: :%record
-}
-multi method new(::?CLASS:_: Map:D $original is raw, Bool:D :consume($)! where ?* --> ::?CLASS:D) {
-    my %record := self.consume: $original;
-    self.bless: :%record
-}
-multi method new(::?CLASS:_: Map:D $original is raw, Bool:D :subsume($)! where ?* --> ::?CLASS:D) {
-    my %record := self.subsume: $original;
-    self.bless: :%record
-}
-multi method new(::?CLASS:_: Map:D $original is raw, Bool:D :coerce($)! where ?* --> ::?CLASS:D) {
-    my %record := self.coerce: $original;
-    self.bless: :%record
-}
-multi method new(::?CLASS:_ ::THIS: Map:D $original is raw, Data::Record::Mode:D :$mode = WRAP --> ::?CLASS:D) {
-    my %record := $original.new: List.from-iterator:
-        MapIterator.new: THIS, THIS.^metamode, $mode, 'map reification', $original;
-    self.bless: :%record
+multi method new(::?CLASS:_: Map:D $original is raw, Data::Record::Mode:D :$mode = WRAP) {
+    self.CREATE."$mode"($original)
 }
 
-method wrap(::?CLASS:_ ::THIS: Map:D $original is raw --> Map:D) {
-    $original.new: List.from-iterator:
-        MapIterator.new: THIS, THIS.^metamode, WRAP, 'map reification', $original
+multi method CALL-ME(::?CLASS:_: Map:D $original is raw, Bool:D :wrap($) where ?*) {
+    self.CREATE.wrap: $original
+}
+multi method CALL-ME(::?CLASS:_: Map:D $original is raw, Bool:D :consume($)! where ?*) {
+    self.CREATE.consume: $original
+}
+multi method CALL-ME(::?CLASS:_: Map:D $original is raw, Bool:D :subsume($)! where ?*) {
+    self.CREATE.subsume: $original
+}
+multi method CALL-ME(::?CLASS:_: Map:D $original is raw, Bool:D :coerce($)! where ?*) {
+    self.CREATE.coerce: $original
 }
 
-method consume(::?CLASS:_ ::THIS: Map:D $original is raw --> Map:D) {
-    $original.new: List.from-iterator:
-        MapIterator.new: THIS, THIS.^metamode, CONSUME, 'map reification', $original
+method wrap(::?CLASS:D ::THIS: Map:D $original is raw) {
+    $!record := $original.new: Slip.from-iterator:
+        MapIterator.new: THIS, THIS.^metamode, WRAP, 'map reification', $original;
+    self
 }
 
-method subsume(::?CLASS:_ ::THIS: Map:D $original is raw --> Map:D) {
-    $original.new: List.from-iterator:
-        MapIterator.new: THIS, THIS.^metamode, SUBSUME, 'map reification', $original
+method consume(::?CLASS:D ::THIS: Map:D $original is raw) {
+    $!record := $original.new: Slip.from-iterator:
+        MapIterator.new: THIS, THIS.^metamode, CONSUME, 'map reification', $original;
+    self
 }
 
-method coerce(::?CLASS:_ ::THIS: Map:D $original is raw --> Map:D) {
-    $original.new: List.from-iterator:
-        MapIterator.new: THIS, THIS.^metamode, COERCE, 'map reification', $original
+method subsume(::?CLASS:D ::THIS: Map:D $original is raw) {
+    $!record := $original.new: Slip.from-iterator:
+        MapIterator.new: THIS, THIS.^metamode, SUBSUME, 'map reification', $original;
+    self
+}
+
+method coerce(::?CLASS:D ::THIS: Map:D $original is raw) {
+    $!record := $original.new: Slip.from-iterator:
+        MapIterator.new: THIS, THIS.^metamode, COERCE, 'map reification', $original;
+    self
 }
 
 method fields(::?CLASS:_: --> Map:D) { self.^fields }
@@ -62,12 +66,12 @@ method fields(::?CLASS:_: --> Map:D) { self.^fields }
 method structural(::?CLASS:_: --> Bool:D) { self.^structural }
 
 do { # hide this sub
-    proto sub unrecord(Mu \key, Mu --> Pair:D)                 { (key) => {*} }
-    multi sub unrecord(Mu, Data::Record::Instance:D \recorded) { recorded.unrecord }
-    multi sub unrecord(Mu, Mu \value) is raw                   { value }
+    proto unrecord(Mu \key, Mu --> Pair:D)                 { (key) => {*} }
+    multi unrecord(Mu, Data::Record::Instance:D \recorded) { recorded.unrecord }
+    multi unrecord(Mu, Mu \value) is raw                   { value }
 
     method unrecord(::?CLASS:D: --> Map:D) {
-        %!record.new: %!record.kv.map: &unrecord
+        $!record.new: $!record.kv.map: &unrecord
     }
 }
 
@@ -88,89 +92,104 @@ multi method ACCEPTS(::?CLASS:U: Map:D \topic) {
 }
 
 method EXISTS-KEY(::?CLASS:D: $key is raw --> Bool:D) {
-    %!record.EXISTS-KEY: $key
+    $!record.EXISTS-KEY: $key
 }
 
 method AT-KEY(::THIS ::?CLASS:D: $key is raw) is raw {
-    CONTROL { .flunk: 'lookup' when CX::Rest }
-    self.^map_field: $key, %!record.AT-KEY: $key
+    $!record.AT-KEY: $key
 }
 
 method BIND-KEY(::THIS ::?CLASS:D: $key is raw, Mu $value is raw) is raw {
     CONTROL { .flunk: 'binding' when CX::Rest }
-    %!record.BIND-KEY: $key, self.^map_field: $key, $value
+    $!record.BIND-KEY: $key, self.^map_field: $key, $value
 }
 
 method ASSIGN-KEY(::THIS ::?CLASS:D: $key is raw, Mu $value is raw) is raw {
     CONTROL { .flunk: 'assignment' when CX::Rest }
-    %!record.ASSIGN-KEY: $key, self.^map_field: $key, $value
+    $!record.ASSIGN-KEY: $key, self.^map_field: $key, $value
 }
 
 method DELETE-KEY(::THIS ::?CLASS:D: $key is raw) {
-    # TODO: Maybe it's OK to delete a field if indefinite.
-    X::Data::Record::Immutable.new(
-        operation => 'deletion',
-        type      => THIS,
-    ).throw if self.^fields.EXISTS-KEY: $key;
     CONTROL { .flunk: 'deletion' when CX::Rest }
-    self.^map_field: $key, (let %!record).DELETE-KEY: $key
+    (let $!record).DELETE-KEY: $key;
+    self.^map_field: $key, $!record.AT-KEY: $key
+}
+
+method name(::?CLASS:D:) is raw {
+    $!record.name
+}
+
+method of(::?CLASS:D:) is raw {
+    $!record.of
+}
+
+method keyof(::?CLASS:D:) is raw {
+    $!record.keyof
+}
+
+method default(::?CLASS:D:) is raw {
+    $!record.default
+}
+
+method dynamic(::?CLASS:D:) is raw {
+    $!record.dynamic
 }
 
 method push(::THIS ::?CLASS:D: +@values is raw --> ::?CLASS:D) {
-    MapIterator.new(THIS, 'bounded', WRAP, 'push', let %!record .= push: @values).sink-all;
+    MapIterator.new(THIS, 'bounded', WRAP, 'push', let $!record .= push: @values).sink-all;
     self
 }
 
 method append(::THIS ::?CLASS:D: +@values is raw --> ::?CLASS:D) {
-    MapIterator.new(THIS, 'bounded', WRAP, 'append', let %!record .= append: @values).sink-all;
+    MapIterator.new(THIS, 'bounded', WRAP, 'append', let $!record .= append: @values).sink-all;
     self
 }
 
-multi method iterator(::?CLASS:D:) { %!record.iterator }
+multi method iterator(::?CLASS:D:) { $!record.iterator }
 
 multi method hash(::?CLASS:D:) is raw { self }
 
-multi method list(::?CLASS:D:) is raw { %!record.list }
+multi method list(::?CLASS:D:) is raw { $!record.list }
 
 method is-lazy(::?CLASS:_:) {
-    self.DEFINITE && %!record.is-lazy
+    self.DEFINITE && $!record.is-lazy
 }
 
 method cache(::?CLASS:_: --> ::?CLASS:D) {
     self.DEFINITE
-      ?? %!record.is-lazy
-        ?? self.new(%!record.cache)
+      ?? $!record.is-lazy
+        ?? self.new($!record.cache)
         !! self
       !! %(self).cache
 }
 
 method eager(::?CLASS:_: --> ::?CLASS:D) {
     self.DEFINITE
-      ?? %!record.is-lazy
-        ?? self.new(%!record.eager)
+      ?? $!record.is-lazy
+        ?? self.new($!record.eager)
         !! self
       !! %(self).eager
 }
 
 method lazy(::?CLASS:_: --> ::?CLASS:D) {
     self.DEFINITE
-      ?? %!record.is-lazy
+      ?? $!record.is-lazy
         ?? self
-        !! self.new(%!record.lazy)
+        !! self.new($!record.lazy)
       !! %(self).lazy
 }
 
-multi method elems(::?CLASS:D:) { %!record.elems }
+multi method elems(::?CLASS:D:) { $!record.elems }
 
-multi method keys(::?CLASS:D:) { %!record.keys }
+multi method keys(::?CLASS:D:) { $!record.keys }
 
-multi method values(::?CLASS:D:) { %!record.values }
+multi method values(::?CLASS:D:) { $!record.values }
 
-multi method kv(::?CLASS:D:) { %!record.kv }
+multi method kv(::?CLASS:D:) { $!record.kv }
 
-multi method pairs(::?CLASS:D:) { %!record.pairs }
+multi method pairs(::?CLASS:D:) { $!record.pairs }
 
-multi method antipairs(::?CLASS:D:) { %!record.antipairs }
+multi method antipairs(::?CLASS:D:) { $!record.antipairs }
 
 method ^annotations($? --> 1) { }
 
@@ -327,7 +346,7 @@ my class MapIterator does PredictiveIterator {
     }
 }
 
-multi sub circumfix:<{@ @}>(Map:D $fields, Str:_ :$name, Bool:D :$structural = False) is export {
+multi method beget(Map:D $fields, Str:_ :$name, Bool:D :$structural = False) is raw {
     my $obj := MetamodelX::RecordHOW[
         Map:D, Data::Record::Map
     ].new_type: $fields<>, :$name;
@@ -335,7 +354,7 @@ multi sub circumfix:<{@ @}>(Map:D $fields, Str:_ :$name, Bool:D :$structural = F
     $how.yield_annotations($obj) = $structural;
     $how.compose: $obj
 }
-multi sub circumfix:<{@ @}>(*@pairs, Str:_ :$name, Bool:D :$structural = False) is export {
+multi method beget(+@pairs is raw, Str:_ :$name, Bool:D :$structural = False) is raw {
     my $obj := MetamodelX::RecordHOW[
         Map:D, Data::Record::Map
     ].new_type: Map.new(@pairs), :$name;
@@ -343,7 +362,7 @@ multi sub circumfix:<{@ @}>(*@pairs, Str:_ :$name, Bool:D :$structural = False) 
     $how.yield_annotations($obj) = $structural;
     $how.compose: $obj
 }
-multi sub circumfix:<{@ @}>(Block:D $block, Str:_ :$name, Bool:D :$structural = False) is export {
+multi method beget(Block:D $block, Str:_ :$name, Bool:D :$structural = False) is raw {
     my $obj := MetamodelX::RecordTemplateHOW[
         MetamodelX::RecordHOW[Map:D, Data::Record::Map]
     ].new_type: $block, :$name;
@@ -352,64 +371,9 @@ multi sub circumfix:<{@ @}>(Block:D $block, Str:_ :$name, Bool:D :$structural = 
     $how.compose: $obj
 }
 
-multi sub infix:«(><)»(Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
-    $rhs.new: $lhs
+multi infix:<eqv>(Map:D $lhs is raw, Data::Record::Map:D $rhs is raw) is raw is export {
+    samewith $lhs, $rhs.unrecord
 }
-multi sub infix:«(><)»(Data::Record::Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
-    $rhs.new: $lhs.record
-}
-multi sub infix:«(><)»(Data::Record::Map:U $lhs is raw, Map:D $rhs is raw --> Data::Record::Map:D) is export {
-    $lhs.new: $rhs
-}
-multi sub infix:«(><)»(Data::Record::Map:U $lhs is raw, Data::Record::Map:D $rhs is raw --> Data::Record::Map:D) is export {
-    $lhs.new: $rhs.record
-}
-
-multi sub infix:«(<<)»(Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
-    $rhs.new: $lhs, :consume
-}
-multi sub infix:«(<<)»(Data::Record::Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
-    $rhs.new: $lhs.record, :consume
-}
-multi sub infix:«(<<)»(Data::Record::Map:U $lhs is raw, Map:D $rhs is raw --> Data::Record::Map:D) is export {
-    $lhs.new: $rhs, :subsume
-}
-multi sub infix:«(<<)»(Data::Record::Map:U $lhs is raw, Data::Record::Map:D $rhs is raw --> Data::Record::Map:D) is export {
-    $lhs.new: $rhs.record, :subsume
-}
-
-multi sub infix:«(>>)»(Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
-    $rhs.new: $lhs, :subsume
-}
-multi sub infix:«(>>)»(Data::Record::Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
-    $rhs.new: $lhs.record, :subsume
-}
-multi sub infix:«(>>)»(Data::Record::Map:U $lhs is raw, Map:D $rhs is raw --> Data::Record::Map:D) is export {
-    $lhs.new: $rhs, :consume
-}
-multi sub infix:«(>>)»(Data::Record::Map:U $lhs is raw, Data::Record::Map:D $rhs is raw --> Data::Record::Map:D) is export {
-    $lhs.new: $rhs.record, :consume
-}
-
-multi sub infix:«(<>)»(Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
-    $rhs.new: $lhs, :coerce
-}
-multi sub infix:«(<>)»(Data::Record::Map:D $lhs is raw, Data::Record::Map:U $rhs is raw --> Data::Record::Map:D) is export {
-    $rhs.new: $lhs.record, :coerce
-}
-multi sub infix:«(<>)»(Data::Record::Map:U $lhs is raw, Map:D $rhs is raw --> Data::Record::Map:D) is export {
-    $lhs.new: $rhs, :coerce
-}
-multi sub infix:«(<>)»(Data::Record::Map:U $lhs is raw, Data::Record::Map:D $rhs is raw --> Data::Record::Map:D) is export {
-    $lhs.new: $rhs.record, :coerce
-}
-
-multi sub infix:<eqv>(Map:D $lhs is raw, Data::Record::Map:D $rhs is raw --> Bool:D) is export {
-    $lhs eqv $rhs.unrecord
-}
-multi sub infix:<eqv>(Data::Record::Map:D $lhs is raw, Map:D $rhs is raw --> Bool:D) is export {
-    $lhs.unrecord eqv $rhs
-}
-multi sub infix:<eqv>(Data::Record::Map:D $lhs is raw, Data::Record::Map:D $rhs is raw --> Bool:D) is export {
-    $lhs.unrecord eqv $rhs.unrecord
+multi infix:<eqv>(Data::Record::Map:D $lhs is raw, Map:D $rhs is raw) is raw is export {
+    samewith $lhs.unrecord, $rhs
 }

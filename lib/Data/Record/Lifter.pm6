@@ -1,4 +1,4 @@
-use v6.d;
+use v6.e.PREVIEW;
 use Data::Record::Mode;
 use Data::Record::Exceptions;
 use Data::Record::Instance;
@@ -12,8 +12,14 @@ class CX::Rest does X::Control {
     #|[ The record field in a record typecheck. ]
     has $.field is built(:bind) is required;
 
-    method new(::?CLASS:_: Mu $value is raw, Mu $field is raw) {
-        self.bless: :$value, :$field
+    my @POOL := cache $?CLASS.CREATE xx *;
+    submethod new(::?CLASS:_: Mu $value is raw, Mu $field is raw) {
+        use nqp;
+        my $self := @POOL.AT-POS: nqp::threadid(nqp::currentthread());
+        nqp::bindattr($self, $?CLASS, '$!value', $value);
+        nqp::bindattr($self, $?CLASS, '$!field', $field);
+        $self.reset-backtrace;
+        $self
     }
 
     #|[ Fails a record typecheck by throwing X::Data::Record::TypeCheck. ]
@@ -35,7 +41,7 @@ class Data::Record::Lifter does Callable is repr<Uninstantiable> {
     proto method CALL-ME(Mu, Mu) is raw {*}
     multi method CALL-ME(I \a, I \b;; :$mode!) {
         CX::Rest.new(a, b).throw unless a.DEFINITE;
-        Metamodel::Primitives.is_type(a, b) ?? a !! b.new(a.unrecord, :$mode)
+        Metamodel::Primitives.is_type(a, b) ?? a !! b.new(a.record, :$mode)
     }
     multi method CALL-ME(Mu \a, I \b;; :$mode!) {
         CX::Rest.new(a, b).throw unless Metamodel::Primitives.is_type(a, b.^for);

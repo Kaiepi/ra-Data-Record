@@ -1,4 +1,4 @@
-use v6.d;
+use v6.e.PREVIEW;
 use Data::Record;
 use Test;
 
@@ -80,9 +80,9 @@ subtest 'records', {
     cmp-ok %coerced, &[eqv], %coerced,
       'record coercions are equivalent to themselves';
 
-    proto sub is-valid(Mu --> Bool:D)   {*}
-    multi sub is-valid(Schema --> True) { }
-    multi sub is-valid(Mu --> False)    { }
+    proto is-valid(Mu --> Bool:D)   {*}
+    multi is-valid(Schema --> True) { }
+    multi is-valid(Mu --> False)    { }
 
     ok is-valid(%coerced),
       'record coercions typecheck against their original record type in signatures';

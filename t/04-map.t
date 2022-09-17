@@ -1,4 +1,4 @@
-use v6.d;
+use v6.e.PREVIEW;
 use Data::Record::Exceptions;
 use Data::Record::Operators;
 use Data::Record::Map;
@@ -114,11 +114,7 @@ subtest 'non-structural', {
           'can check if keys exist in a map';
 
         cmp-ok %map<name>, &[===], 'Kaiepi',
-          'can get values of keys in a map...';
-        throws-like {
-            %map<ayy>
-        }, X::Data::Record::OutOfBounds,
-          '...but only if they exist';
+          'can get values of keys in a map';
 
         cmp-ok (%map<name> = 'Ben Davies'), &[===], 'Ben Davies',
           'can assign to keys in a map...';
@@ -144,8 +140,12 @@ subtest 'non-structural', {
 
         throws-like {
             %map<name>:delete
-        }, X::Data::Record::Immutable,
-          'cannot delete keys from a map';
+        }, X::Data::Record::TypeCheck,
+          'cannot delete keys from a map if their hole does not typecheck';
+        throws-like {
+            %map<preoccupation>:delete
+        }, X::Data::Record::OutOfBounds,
+          'cannot delete keys from a map if they are out of bounds';
 
         %map := %(
             name  => 'Kaiepi',
@@ -378,11 +378,11 @@ subtest 'structural', {
 
         throws-like {
             %map<name>:delete
-        }, X::Data::Record::Immutable,
-          'cannot delete keys from a map if they are in its fields';
+        }, X::Data::Record::TypeCheck,
+          'cannot delete keys from a map if their hole does not typecheck';
         lives-ok {
-            %map<foo>:delete
-        }, 'can delete keys from a map if they are not in its fields';
+            %map<preoccupation>:delete
+        }, 'can delete keys from a map if they are out of bounds';
 
         %map := %(
             name  => 'Kaiepi',

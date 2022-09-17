@@ -1,12 +1,30 @@
-use v6.d;
+use v6.e.PREVIEW;
 use Data::Record::Exceptions;
+only EXPORT(--> Map:D) { Map.new: '&infix:<eqv>' => ::{'&infix:<eqv>'} }
 unit role Data::Record::Instance[::T];
 
-proto method new(::?ROLE:_: |)                               {*}
-# multi method new(::?ROLE:_: T)                             { ... }
-# multi method new(::?ROLE:_: T, Bool:D :$consume! where ?*) { ... }
-# multi method new(::?ROLE:_: T, Bool:D :$subsume! where ?*) { ... }
-# multi method new(::?ROLE:_: T, Bool:D :$coerce! where ?*)  { ... }
+#|[ Programmatic constructor. ]
+proto method new(::?CLASS:_: +) {*}
+#=[ Takes :wrap, :consume, :subsume, :coerce adverbs individually. ]
+multi method new(::?CLASS:_ $self:
+    $original is raw,
+    *%adverbs where (.{<wrap consume subsume coerce>.any}:exists)
+) is DEPRECATED<CALL-ME> {
+    $self($original, |%adverbs)
+}
+
+#|[ Verbal constructor. ]
+proto method CALL-ME(::?CLASS:_: $) {*}
+#=[ Takes :wrap, :consume, :subsume, :coerce adverbs individually. ]
+multi method CALL-ME(::?CLASS:_: ::?ROLE:U $other is raw) {
+    $?CLASS
+}
+multi method CALL-ME(::?CLASS:_: ::?ROLE:D $other is raw) {
+    samewith $other.record
+}
+multi method CALL-ME(::?CLASS:_: ::?CLASS:_ $self is raw) {
+    $self
+}
 
 #|[ Wraps a data structure, typechecking it to ensure it matches this record
     type. This is done recursively for record type fields. ]
@@ -52,6 +70,9 @@ proto method ACCEPTS(Mu: Mu) {*}
 multi method ACCEPTS(::?ROLE:U: T --> True) { }
 multi method ACCEPTS(::?ROLE:_: Mu --> False) { }
 multi method ACCEPTS(::?CLASS:_: ::?CLASS:_ \topic) { self.WHAT =:= topic.WHAT }
+
+#|[ Seals this record instance with its fields as a subtype. ]
+proto method beget(::?CLASS:U: |) {*}
 
 #|[ Handles an operation on a field of the record given a callback accepting a
     value to perform the operation with. Typechecking and coercion of data
